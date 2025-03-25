@@ -7,7 +7,7 @@ solana_version = "1.18.25"
 seeds = false
 skip-lint = false
 
-[programs.localnet]
+[programs.devnet]
 peer_token = "FQahsxqzzkvVQDC7W7kA16cUALfgZ9M2UUH9utV4V9YL"
 
 [registry]
