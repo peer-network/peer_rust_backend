@@ -1,0 +1,16 @@
+type Query {
+  hello : HelloResponse
+}
+
+type Mutation {
+  requestGemsDataPull: RequestGemsDataPullStatusResponse
+}
+
+type HelloResponse {
+  version : String
+}
+
+type RequestGemsDataPullStatusResponse {
+  status : String
+  responseCode : String
+}
