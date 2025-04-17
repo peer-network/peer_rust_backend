@@ -6,6 +6,7 @@ export interface GraphQLConfig {
   APP_PORT: number
   GRAPHQL_ENDPOINT: string
   PEER_BACKEND_GRAPHQL_ENDPOINT: string
+  PEER_BACKEND_API_TOKEN: string
   // API_TOKEN: string;          // Authentication token
   // REQUEST_TIMEOUT: number;    // Request timeout in milliseconds
   // MAX_RETRIES: number;        // Maximum number of retry attempts
