@@ -18,7 +18,7 @@
                 "*": ["node_modules/*"]
               }
             },
-            "include": ["app/**/*", "tests/**/*", "utils/**/*"],
+            "include": ["app/**/*", "tests/**/*", "utils/**/*", "codegen.ts"],
             "exclude": ["node_modules", "dist"]
           }
           

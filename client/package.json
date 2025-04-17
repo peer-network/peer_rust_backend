@@ -14,7 +14,9 @@
         "test:coverage": "jest --coverage",
         "test:fetch": "ts-node app/test-fetch.ts",
         "test:ci": "jest --ci --coverage --runInBand",
-        "test:anchor": "anchor test"
+        "test:anchor": "anchor test",
+        "compile": "graphql-codegen",
+        "watch": "graphql-codegen -w"
     },
     "dependencies": {
         "@coral-xyz/anchor": "^0.29.0",
