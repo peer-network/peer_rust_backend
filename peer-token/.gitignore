@@ -1,8 +1,49 @@
-
+# Anchor
 .anchor
-.DS_Store
 target
 **/*.rs.bk
-node_modules
 test-ledger
+
+# Node.js
+node_modules
 .yarn
+.pnp.*
+yarn-error.log
+.npmrc
+
+# Solana
+.config
+
+# TypeScript
+dist
+.tsbuildinfo
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Wallet keypairs
+wallet-keypair.json
+*wallet*.json
+*.keypair
+*.wallet
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.idea/
+.vscode/
+*.sublime-*
+.project
+.classpath
+*.swp
+*~
+
+# Cursor specific
+.cursor/
+.cursor-cache/
+cursor.local.json
+*.cursor.json
