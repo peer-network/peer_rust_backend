@@ -155,11 +155,13 @@ describe("peer-token", () => {
         mint: mint.publicKey,
         sourceTokenAccount: companyTokenAccount,
         destinationTokenAccount: user1TokenAccount,
+        recipient: user1.publicKey,
         authority: company.publicKey,
         distributionInfo: distributionInfo.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
       })
       .rpc();
       
@@ -173,11 +175,13 @@ describe("peer-token", () => {
         mint: mint.publicKey,
         sourceTokenAccount: companyTokenAccount,
         destinationTokenAccount: user2TokenAccount,
+        recipient: user2.publicKey,
         authority: company.publicKey,
         distributionInfo: distributionInfo.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
       })
       .rpc();
       
@@ -191,11 +195,13 @@ describe("peer-token", () => {
         mint: mint.publicKey,
         sourceTokenAccount: companyTokenAccount,
         destinationTokenAccount: user3TokenAccount,
+        recipient: user3.publicKey,
         authority: company.publicKey,
         distributionInfo: distributionInfo.publicKey,
         tokenProgram: TOKEN_PROGRAM_ID,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
+        rent: SYSVAR_RENT_PUBKEY,
       })
       .rpc();
       

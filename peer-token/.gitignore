@@ -28,6 +28,7 @@ wallet-keypair.json
 *wallet*.json
 *.keypair
 *.wallet
+test-wallets
 
 # OS specific files
 .DS_Store

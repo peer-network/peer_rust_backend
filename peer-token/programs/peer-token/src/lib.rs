@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     token::{Mint, Token, TokenAccount, Transfer, transfer},
-    associated_token::AssociatedToken,
+    associated_token::{AssociatedToken, create, Create},
 };
 
 declare_id!("AyU7HfAP36feEsNTfAifzLxDcT7kCYPER6HxWeb7czmX");
@@ -90,6 +90,26 @@ pub mod peer_token {
             transfer_amount <= source_balance,
             ErrorCode::InsufficientFunds
         );
+        
+        // Check if the destination token account is empty (needs to be created)
+        if ctx.accounts.destination_token_account.to_account_info().data_is_empty() {
+            msg!("Creating Associated Token Account for recipient");
+            
+            // Create the associated token account
+            let cpi_accounts = Create {
+                payer: ctx.accounts.authority.to_account_info(),
+                associated_token: ctx.accounts.destination_token_account.to_account_info(),
+                authority: ctx.accounts.recipient.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+                token_program: ctx.accounts.token_program.to_account_info(),
+            };
+            
+            let cpi_program = ctx.accounts.associated_token_program.to_account_info();
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+            
+            create(cpi_ctx)?;
+        }
         
         // Transfer tokens from source to destination
         let cpi_accounts = Transfer {
@@ -193,6 +213,11 @@ pub struct ExecuteDistribution<'info> {
     )]
     pub destination_token_account: Account<'info, TokenAccount>,
     
+    /// CHECK: This is the recipient wallet that will own the token account.
+    /// It's used only as a reference for creating the associated token account
+    /// and is not written to or read from directly.
+    pub recipient: UncheckedAccount<'info>,
+    
     /// The authority (signer) that owns the source token account
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -209,6 +234,7 @@ pub struct ExecuteDistribution<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 /// Accounts required for finalizing a distribution
