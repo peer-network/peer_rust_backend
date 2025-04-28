@@ -5,7 +5,7 @@ import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import fs from 'fs';
 
 // Program ID from declare_id!() in lib.rs
-const PROGRAM_ID = new PublicKey('HuEiNnujaKX3vnhVn8wU8vQ6wDjoQh2xYAD7FhZcS2RQ');
+const PROGRAM_ID = new PublicKey('DAApXWPZsSdDUPRhmSgQTuwKqT8ooR9oboGz9wLK69n9');
 
 // File to store last mint timestamp
 const LAST_MINT_FILE = 'last_mint.json';
@@ -72,6 +72,14 @@ async function main() {
             [Buffer.from('peer-token')],
             program.programId
         );
+
+        const [lastMintPDA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from('daily-mint'),
+                companyKeypair.publicKey.toBuffer()
+            ],
+            program.programId
+        );
         
         // Get peer token account (ATA)
         const peerTokenAccount = getAssociatedTokenAddressSync(
@@ -88,10 +96,11 @@ async function main() {
         const tx = await program.methods
             .dailyMint(amount)
             .accounts({
-                peer_authority: companyKeypair.publicKey,
-                peer_mint: mintPDA,
-                peer_token_account: peerTokenAccount,
-                token_program: program.programId,
+                peerAuthority: companyKeypair.publicKey,
+                peerMint: mintPDA,
+                peerTokenAccount: peerTokenAccount,
+                tokenProgram: program.programId,
+                lastMint: lastMintPDA,
             })
             .signers([companyKeypair])
             .rpc();

@@ -5,7 +5,7 @@ seeds = false
 skip-lint = false
 
 [programs.devnet]
-peer_token = "HuEiNnujaKX3vnhVn8wU8vQ6wDjoQh2xYAD7FhZcS2RQ"
+peer_token = "DAApXWPZsSdDUPRhmSgQTuwKqT8ooR9oboGz9wLK69n9"
 
 [registry]
 url = "https://api.apr.dev"

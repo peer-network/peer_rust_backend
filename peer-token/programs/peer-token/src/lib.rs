@@ -12,9 +12,9 @@ use instructions::user_token_account::CreateUserTokenAccountArgs;
 use instructions::token_transfer::TransferTokenArgs;
 use instructions::mint_to::MintToArgs;
 use instructions::metadata::CreateMetadataArgs;
-use instructions::daily_mint::DailyMintContext;
+use instructions::daily_mint::DailyMint;
 
-declare_id!("HuEiNnujaKX3vnhVn8wU8vQ6wDjoQh2xYAD7FhZcS2RQ");
+declare_id!("DAApXWPZsSdDUPRhmSgQTuwKqT8ooR9oboGz9wLK69n9");
 
 #[program]
 pub mod peer_token {
@@ -62,7 +62,7 @@ pub mod peer_token {
     }
     
     /// Mint tokens to company account once per day
-    pub fn daily_mint(ctx: Context<DailyMintContext>, amount: u64) -> Result<()> {
+    pub fn daily_mint(ctx: Context<DailyMint>, amount: u64) -> Result<()> {
         instructions::daily_mint::handler(ctx, amount)
     }
 }
