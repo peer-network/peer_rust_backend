@@ -8,7 +8,8 @@ import {
     ExtensionType,
     createInitializeMintCloseAuthorityInstruction,
     createInitializeMetadataPointerInstruction,
-    getMint
+    getMint,
+    ASSOCIATED_TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,10 +19,10 @@ import { MPL_TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-me
 const METADATA_PROGRAM_ID = new PublicKey(MPL_TOKEN_METADATA_PROGRAM_ID);
 
 // Set up the program ID (update with your deployed program ID)
-const PROGRAM_ID = new PublicKey("E266nUxdA76AdugwrfV3MNemf7PLTZuY7PofjfgKgXsQ");
+const PROGRAM_ID = new PublicKey("HuEiNnujaKX3vnhVn8wU8vQ6wDjoQh2xYAD7FhZcS2RQ");
 
 // Token details
-const TOKEN_NAME = "Peer Token Beta V3.3";
+const TOKEN_NAME = "Peer Token Beta V3.5";
 const TOKEN_SYMBOL = "PEER";
 const TOKEN_URI = "https://media.peer-network.eu/image/PeerSignet_Color_RGB.png";
 const TOKEN_DECIMALS = 9;
@@ -69,9 +70,7 @@ async function main() {
         // Derive the token mint PDA
         const [mintPda] = PublicKey.findProgramAddressSync(
             [
-                Buffer.from("token-2022-token"), 
-                keypair.publicKey.toBuffer(), 
-                Buffer.from(TOKEN_NAME)
+                Buffer.from("peer-token"),
             ],
             PROGRAM_ID
         );
@@ -137,149 +136,149 @@ async function main() {
         // =========================================================
         // 3. Create a Token Account (PDA-based)
         // =========================================================
-        console.log("\n📋 STEP 3: Creating PDA Token Account");
+//         console.log("\n📋 STEP 3: Creating PDA Token Account");
         
-        // Derive the token account PDA
-        const [tokenAccountPda] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("token-2022-token-account"),
-                keypair.publicKey.toBuffer(),
-                mintPda.toBuffer()
-            ],
-            PROGRAM_ID
-        );
+//         // Derive the token account PDA
+//         const [tokenAccountPda] = PublicKey.findProgramAddressSync(
+//             [
+//                 Buffer.from("token-2022-token-account"),
+//                 keypair.publicKey.toBuffer(),
+//                 mintPda.toBuffer()
+//             ],
+//             PROGRAM_ID
+//         );
         
-        console.log("🔹 Token Account PDA:", tokenAccountPda.toString());
+//         console.log("🔹 Token Account PDA:", tokenAccountPda.toString());
         
-        // Create token account
-        const createTokenAccountTx = await program.methods
-            .createTokenAccount()
-            .accounts({
-                signer: keypair.publicKey,
-                mint: mintPda,
-                tokenAccount: tokenAccountPda,
-                tokenProgram: TOKEN_2022_PROGRAM_ID,
-                systemProgram: SystemProgram.programId
-            })
-            .rpc();
+//         // Create token account
+//         const createTokenAccountTx = await program.methods
+//             .createTokenAccount()
+//             .accounts({
+//                 signer: keypair.publicKey,
+//                 mint: mintPda,
+//                 tokenAccount: tokenAccountPda,
+//                 tokenProgram: TOKEN_2022_PROGRAM_ID,
+//                 systemProgram: SystemProgram.programId
+//             })
+//             .rpc();
         
-        console.log("✅ Token account created successfully");
-        console.log("🔹 Transaction:", createTokenAccountTx);
-        console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${createTokenAccountTx}?cluster=devnet`);
+//         console.log("✅ Token account created successfully");
+//         console.log("🔹 Transaction:", createTokenAccountTx);
+//         console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${createTokenAccountTx}?cluster=devnet`);
         
-        // =========================================================
-        // 4. Create an Associated Token Account
-        // =========================================================
-        console.log("\n📋 STEP 4: Creating Associated Token Account");
+//         // =========================================================
+//         // 4. Create an Associated Token Account
+//         // =========================================================
+//         console.log("\n📋 STEP 4: Creating Associated Token Account");
         
-        // Calculate the ATA address
-        const ata = getAssociatedTokenAddressSync(
-            mintPda,
-            keypair.publicKey,
-            false,
-            TOKEN_2022_PROGRAM_ID
-        );
+//         // Calculate the ATA address
+//         const ata = getAssociatedTokenAddressSync(
+//             mintPda,
+//             keypair.publicKey,
+//             false,
+//             TOKEN_2022_PROGRAM_ID
+//         );
         
-        console.log("🔹 Associated Token Account:", ata.toString());
+//         console.log("🔹 Associated Token Account:", ata.toString());
         
-        // Create associated token account
-        const createAtaTx = await program.methods
-            .createAssociatedTokenAccount()
-            .accounts({
-                signer: keypair.publicKey,
-                mint: mintPda,
-                tokenAccount: ata,
-                tokenProgram: TOKEN_2022_PROGRAM_ID,
-                associatedTokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: SystemProgram.programId
-            })
-            .rpc();
+//         // Create associated token account
+//         const createAtaTx = await program.methods
+//             .createAssociatedTokenAccount()
+//             .accounts({
+//                 signer: keypair.publicKey,
+//                 mint: mintPda,
+//                 tokenAccount: ata,
+//                 tokenProgram: TOKEN_2022_PROGRAM_ID,
+//                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+//                 systemProgram: SystemProgram.programId
+//             })
+//             .rpc();
         
-        console.log("✅ Associated token account created successfully");
-        console.log("🔹 Transaction:", createAtaTx);
-        console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${createAtaTx}?cluster=devnet`);
+//         console.log("✅ Associated token account created successfully");
+//         console.log("🔹 Transaction:", createAtaTx);
+//         console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${createAtaTx}?cluster=devnet`);
         
-        // =========================================================
-        // 5. Mint Tokens to the PDA Token Account
-        // =========================================================
-        console.log("\n📋 STEP 5: Minting Tokens to PDA Token Account");
+//         // =========================================================
+//         // 5. Mint Tokens to the PDA Token Account
+//         // =========================================================
+//         console.log("\n📋 STEP 5: Minting Tokens to PDA Token Account");
         
-        // Mint tokens to the token account
-        const mintTokensTx = await program.methods
-            .mintToken(new anchor.BN(MINT_AMOUNT))
-            .accounts({
-                signer: keypair.publicKey,
-                mint: mintPda,
-                receiver: tokenAccountPda,
-                tokenProgram: TOKEN_2022_PROGRAM_ID
-            })
-            .rpc();
+//         // Mint tokens to the token account
+//         const mintTokensTx = await program.methods
+//             .mintToken(new anchor.BN(MINT_AMOUNT))
+//             .accounts({
+//                 signer: keypair.publicKey,
+//                 mint: mintPda,
+//                 receiver: tokenAccountPda,
+//                 tokenProgram: TOKEN_2022_PROGRAM_ID
+//             })
+//             .rpc();
         
-        console.log(`✅ Minted ${MINT_AMOUNT / (10 ** TOKEN_DECIMALS)} tokens to PDA token account`);
-        console.log("🔹 Transaction:", mintTokensTx);
-        console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${mintTokensTx}?cluster=devnet`);
+//         console.log(`✅ Minted ${MINT_AMOUNT / (10 ** TOKEN_DECIMALS)} tokens to PDA token account`);
+//         console.log("🔹 Transaction:", mintTokensTx);
+//         console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${mintTokensTx}?cluster=devnet`);
         
-        // =========================================================
-        // 6. Transfer Tokens to a New Wallet
-        // =========================================================
-        console.log("\n📋 STEP 6: Transferring Tokens to a New Wallet");
+//         // =========================================================
+//         // 6. Transfer Tokens to a New Wallet
+//         // =========================================================
+//         console.log("\n📋 STEP 6: Transferring Tokens to a New Wallet");
         
-        // Create a new wallet to send tokens to
-        const destinationWallet = Keypair.generate();
+//         // Create a new wallet to send tokens to
+//         const destinationWallet = Keypair.generate();
         
-        console.log("🔹 Destination Wallet:", destinationWallet.publicKey.toString());
+//         console.log("🔹 Destination Wallet:", destinationWallet.publicKey.toString());
         
-        // Calculate destination ATA
-        const destinationAta = getAssociatedTokenAddressSync(
-            mintPda,
-            destinationWallet.publicKey,
-            false,
-            TOKEN_2022_PROGRAM_ID
-        );
+//         // Calculate destination ATA
+//         const destinationAta = getAssociatedTokenAddressSync(
+//             mintPda,
+//             destinationWallet.publicKey,
+//             false,
+//             TOKEN_2022_PROGRAM_ID
+//         );
         
-        console.log("🔹 Destination ATA (will be created):", destinationAta.toString());
+//         console.log("🔹 Destination ATA (will be created):", destinationAta.toString());
         
-        // Amount to transfer (10 tokens)
-        const transferAmount = 10 * (10 ** TOKEN_DECIMALS);
+//         // Amount to transfer (10 tokens)
+//         const transferAmount = 100 * (10 ** TOKEN_DECIMALS);
         
-        // Transfer tokens
-        const transferTokensTx = await program.methods
-            .transferToken(new anchor.BN(transferAmount))
-            .accounts({
-                signer: keypair.publicKey,
-                from: tokenAccountPda,
-                to: destinationWallet.publicKey,
-                toAta: destinationAta,
-                mint: mintPda,
-                tokenProgram: TOKEN_2022_PROGRAM_ID,
-                associatedTokenProgram: TOKEN_PROGRAM_ID,
-                systemProgram: SystemProgram.programId
-            })
-            .rpc();
+//         // Transfer tokens
+//         const transferTokensTx = await program.methods
+//             .transferToken(new anchor.BN(transferAmount))
+//             .accounts({
+//                 signer: keypair.publicKey,
+//                 from: tokenAccountPda,
+//                 to: destinationWallet.publicKey,
+//                 toAta: destinationAta,
+//                 mint: mintPda,
+//                 tokenProgram: TOKEN_2022_PROGRAM_ID,
+//                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+//                 systemProgram: SystemProgram.programId
+//             })
+//             .rpc();
         
-        console.log(`✅ Transferred ${transferAmount / (10 ** TOKEN_DECIMALS)} tokens to destination wallet`);
-        console.log("🔹 Transaction:", transferTokensTx);
-        console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${transferTokensTx}?cluster=devnet`);
+//         console.log(`✅ Transferred ${transferAmount / (10 ** TOKEN_DECIMALS)} tokens to destination wallet`);
+//         console.log("🔹 Transaction:", transferTokensTx);
+//         console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${transferTokensTx}?cluster=devnet`);
         
-        // =========================================================
-        // Verify Balances
-        // =========================================================
-        console.log("\n📋 STEP 7: Verifying Token Balances");
-        
-        // Allow time for transactions to confirm
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Get PDA token account info
-        const pdaAccountInfo = await connection.getTokenAccountBalance(tokenAccountPda);
-        console.log(`🔹 PDA Token Account Balance: ${pdaAccountInfo.value.uiAmount} ${TOKEN_SYMBOL}`);
-        
-        // Get destination ATA account info
-        const destinationAtaInfo = await connection.getTokenAccountBalance(destinationAta);
-        console.log(`🔹 Destination ATA Balance: ${destinationAtaInfo.value.uiAmount} ${TOKEN_SYMBOL}`);
-        
-        console.log("\n====================================");
-        console.log("✅ All Token Operations Completed Successfully");
-        console.log("====================================");
+//         // =========================================================
+//         // Verify Balances
+//         // =========================================================
+//         console.log("\n📋 STEP 7: Verifying Token Balances");
+
+//         // Allow time for transactions to confirm
+//         await new Promise(resolve => setTimeout(resolve, 2000));
+
+//         // Get PDA token account info
+//         const pdaAccountInfo = await connection.getTokenAccountBalance(tokenAccountPda);
+//         console.log(`🔹 PDA Token Account Balance: ${pdaAccountInfo.value.uiAmount} ${TOKEN_SYMBOL}`);
+
+//         // Get destination ATA account info
+//         const destinationAtaInfo = await connection.getTokenAccountBalance(destinationAta);
+//         console.log(`🔹 Destination ATA Balance: ${destinationAtaInfo.value.uiAmount} ${TOKEN_SYMBOL}`);
+
+//         console.log("\n====================================");
+//         console.log("✅ All Token Operations Completed Successfully");
+//         console.log("====================================");
 
     } catch (error) {
         console.error("\n❌ Error during execution:");

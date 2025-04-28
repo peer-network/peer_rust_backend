@@ -20,18 +20,8 @@ pub fn handler(
     msg!("Metadata account address: {}", &ctx.accounts.metadata_account.key());
     msg!("Token decimals: {}", token_decimals);
 
-    // Creating DataV2 with explicit fungible token properties
-    let data = DataV2 {
-        name: token_name,
-        symbol: token_symbol,
-        uri: token_uri,
-        seller_fee_basis_points: 0,
-        creators: None,
-        collection: None,
-        uses: None,
-    };
-
-    // Create metadata using V3
+    // Cross Program Invocation (CPI)
+    // Invoking the create_metadata_account_v3 instruction on the token metadata program
     create_metadata_accounts_v3(
         CpiContext::new(
             ctx.accounts.token_metadata_program.to_account_info(),
@@ -45,10 +35,18 @@ pub fn handler(
                 rent: ctx.accounts.rent.to_account_info(),
             },
         ),
-        data,
-        true, // Make it is_mutable so we can update it if needed
-        true, // Update authority is signer
-        None, // No collection details
+        DataV2 {
+            name: token_name,
+            symbol: token_symbol,
+            uri: token_uri,
+            seller_fee_basis_points: 0,
+            creators: None,
+            collection: None,
+            uses: None,
+        },
+        false, // Is mutable (false for fungible tokens)
+        true,  // Update authority is signer
+        None,  // Collection details (None for fungible tokens)
     )?;
 
     msg!("Metaplex metadata created successfully for FUNGIBLE Token-2022 token");
