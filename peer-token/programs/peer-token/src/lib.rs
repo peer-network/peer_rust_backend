@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+
 // Import instruction modules
 pub mod instructions;
 
@@ -10,12 +11,16 @@ pub use instructions::mint_to::*;
 pub use instructions::user_token_account::*;
 pub use instructions::token_transfer::*;
 pub use instructions::daily_mint::*;
+pub use instructions::airdrop::*;
+
 
 declare_id!("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
+
 
 #[program]
 pub mod peer_token {
     use super::*;
+    
 
     /// Creates a new token mint with the signer as the mint authority
     pub fn create_token(ctx: Context<MintTokenArgs>) -> Result<()> {
@@ -59,4 +64,17 @@ pub mod peer_token {
     pub fn daily_mint(ctx: Context<DailyMintArgs>, amount: u64) -> Result<()> {
         instructions::daily_mint::handler(ctx, amount)
     }
+  
+    /// Initialize token transfer functionality
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        instructions::airdrop::initialize_handler(ctx)
+    }
+    
+    /// Transfers tokens to a recipient wallet
+    pub fn transfer_tokens(
+        ctx: Context<TransferTokens>,
+        amount: u64
+    ) -> Result<()> {
+        instructions::airdrop::transfer_tokens_handler(ctx, amount)
+  }
 }
