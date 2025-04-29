@@ -22,16 +22,16 @@ pub fn transfer_tokens_handler(
     require!(amount > 0, ErrorCode::InsufficientAmount);
     
     // Verify there are enough tokens to transfer
-    let source_balance = ctx.accounts.source_token_account.amount;
+    let peer_balance = ctx.accounts.peer_token_account.amount;
     require!(
-        amount <= source_balance,
+        amount <= peer_balance,
         ErrorCode::InsufficientFunds
     );
     
-    // Transfer tokens from source to destination
+    // Transfer tokens from peer token account to user token account
     let cpi_accounts = Transfer {
-        from: ctx.accounts.source_token_account.to_account_info(),
-        to: ctx.accounts.destination_token_account.to_account_info(),
+        from: ctx.accounts.peer_token_account.to_account_info(),
+        to: ctx.accounts.user_token_account.to_account_info(),
         authority: ctx.accounts.authority.to_account_info(),
     };
     
@@ -79,21 +79,21 @@ pub struct TransferTokens<'info> {
     /// The mint of the token being transferred
     pub mint: Account<'info, Mint>,
     
-    /// The source token account (company wallet)
+    /// The peer token account
     #[account(
         mut,
-        constraint = source_token_account.mint == mint.key() @ ErrorCode::InvalidMint,
-        constraint = source_token_account.owner == authority.key() @ ErrorCode::InvalidOwner,
+        constraint = peer_token_account.mint == mint.key() @ ErrorCode::InvalidMint,
+        constraint = peer_token_account.owner == authority.key() @ ErrorCode::InvalidOwner,
     )]
-    pub source_token_account: Account<'info, TokenAccount>,
+    pub peer_token_account: Account<'info, TokenAccount>,
     
     /// The destination token account (recipient's wallet)
     /// This account must exist and be initialized (client's responsibility)
     #[account(
         mut,
-        constraint = destination_token_account.mint == mint.key() @ ErrorCode::InvalidMint,
+        constraint = user_token_account.mint == mint.key() @ ErrorCode::InvalidMint,
     )]
-    pub destination_token_account: Account<'info, TokenAccount>,
+    pub user_token_account: Account<'info, TokenAccount>,
     
     /// The owner of the destination token account (for event emission)
     /// CHECK: We only use this for event emission
@@ -135,7 +135,7 @@ pub enum ErrorCode {
     #[msg("Cannot transfer zero or insufficient amount")]
     InsufficientAmount,
     
-    #[msg("Insufficient funds in source account")]
+    #[msg("Insufficient funds in peer token account")]
     InsufficientFunds,
     
     #[msg("Invalid mint account")]
