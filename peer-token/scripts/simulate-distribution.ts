@@ -17,82 +17,116 @@ import {
   sendAndConfirmTransaction
 } from "@solana/web3.js";
 
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync } from 'fs';
 import * as path from 'path';
 import { homedir } from 'os';
 
 import * as idl from "../target/idl/peer_token.json";
 import type { PeerToken } from "../target/types/peer_token";
 
-// Function to load keypair from file
-async function loadKeypairFromFile(filePath: string): Promise<Keypair> {
-  const resolvedPath = path.resolve(
-    filePath.startsWith("~") ? filePath.replace("~", homedir()) : filePath,
-  );
-  const loadedKeyBytes = Uint8Array.from(
-    JSON.parse(readFileSync(resolvedPath, "utf8")),
-  );
-  return Keypair.fromSecretKey(loadedKeyBytes);
+const CONNECTION_URL = "https://api.devnet.solana.com";
+const WALLET_PATH = "/Users/macbookpro/BlockChain/peer_rust_backend/peer-token/wallet-keypair.json";
+const PROGRAM_ID = "3AhrXXfZ6QLe4bswBjkszDMb5RjnvhELNxESGRwK9jUk";
+const MINT_ADDRESS = "FR9wWHQmyBJB4rnp3RGH4whpSSuGkVntENeKrNfnnxbX";
+
+interface User {  
+  walletAddress: string;
+  tokenAmount: number;
 }
 
-// Example JSON data from Dimitri (this would normally come from an API/file)
-const dimitriInputExample = {
-  "distributionId": "gems-distribution-2023-06-12",
-  "totalGems": 100,
+interface Distribution {
+  distributionId: string;
+  users: User[];
+}
+
+interface ProcessedUser {
+  wallet: PublicKey;
+  tokenAmount: number;
+}
+
+interface UserDetail {
+  wallet: string;
+  tokenAccount: string;
+  accountExists: boolean;
+  currentBalance: string;
+  tokenAmount: number;
+}
+
+interface TransferResult {
+  wallet: string;
+  tokenAmount: number;
+  tokenAccount: string;
+  accountCreated: boolean;
+  finalBalance: string;
+}
+
+const dimitriInputExample: Distribution = {
+  "distributionId": "token-distribution-2023-06-12",
   "users": [
     {
-      "userId": "user123",
-      "walletAddress": "FBbv5zeg6NpFmvq5tVbsi977ZnjsvGX2kgkW5BVAuX2b", // Real Solana wallet
-      "gems": 50
+      "walletAddress": "FBbv5zeg6NpFmvq5tVbsi977ZnjsvGX2kgkW5BVAuX2b",
+      "tokenAmount": 500
     },
     {
-      "userId": "user456", 
-      "walletAddress": "9uph5xRg6DSGdMAVD1q6haSCF8HYV5vUN459ZctSz6yw", // Real Solana wallet
-      "gems": 30
+      "walletAddress": "9uph5xRg6DSGdMAVD1q6haSCF8HYV5vUN459ZctSz6yw",
+      "tokenAmount": 300
     },
     {
-      "userId": "user789",
-      "walletAddress": "D8LGXiqA2P9vV4eJF4bLUSeYxPHYC6r94VozccSvPS6d", // Real Solana wallet
-      "gems": 20
+      "walletAddress": "D8LGXiqA2P9vV4eJF4bLUSeYxPHYC6r94VozccSvPS6d",
+      "tokenAmount": 200
     },
-    // Example of a new wallet we're adding to test ATA creation
     {
-      "userId": "userNew",
-      "walletAddress": "83vbytaC77sPKRHu5EuHFn2By6Kd73zyfcLvfS4GcUuL", // Real Solana wallet
-      "gems": 0
+      "walletAddress": "83vbytaC77sPKRHu5EuHFn2By6Kd73zyfcLvfS4GcUuL",
+      "tokenAmount": 0
     }
   ]
 };
 
-// Pretty log formatting
-function logHeader(message: string) {
-  console.log("\n" + "=".repeat(80));
-  console.log(`== ${message}`);
-  console.log("=".repeat(80));
+const Logger = {
+  header: (message: string) => {
+    console.log("\n" + "=".repeat(80));
+    console.log(`== ${message}`);
+    console.log("=".repeat(80));
+  },
+  
+  section: (message: string) => {
+    console.log("\n" + "-".repeat(60));
+    console.log(`| ${message}`);
+    console.log("-".repeat(60));
+  },
+  
+  detail: (label: string, value: string) => {
+    console.log(`  ${label.padEnd(25)}: ${value}`);
+  },
+  
+  error: (message: string, error: any) => {
+    console.error(`ERROR: ${message}`);
+    if (error) console.error("Error details:", error);
+  }
+};
+
+// Load keypair from file
+async function loadKeypairFromFile(filePath: string): Promise<Keypair> {
+  try {
+    const resolvedPath = path.resolve(
+      filePath.startsWith("~") ? filePath.replace("~", homedir()) : filePath,
+    );
+    const loadedKeyBytes = Uint8Array.from(
+      JSON.parse(readFileSync(resolvedPath, "utf8")),
+    );
+    return Keypair.fromSecretKey(loadedKeyBytes);
+  } catch (error) {
+    Logger.error(`Failed to load keypair from ${filePath}`, error);
+    throw error;
+  }
 }
 
-function logSection(message: string) {
-  console.log("\n" + "-".repeat(60));
-  console.log(`| ${message}`);
-  console.log("-".repeat(60));
-}
-
-function logDetail(label: string, value: string) {
-  console.log(`  ${label.padEnd(25)}: ${value}`);
-}
-
-// This script simulates Dimitri's client-side interaction with your program
-async function main() {
+// Initialize connection and program
+async function initializeProgram(companyKeypair: Keypair) {
   // Create a connection to Solana devnet
-  const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+  const connection = new Connection(CONNECTION_URL, "confirmed");
   
-  // Load company keypair from file
-  const companyKeypair = await loadKeypairFromFile("/Users/macbookpro/BlockChain/peer_rust_backend/peer-token/wallet-keypair.json");
-  
-  logHeader("COMPANY WALLET INFORMATION");
-  logDetail("Company Wallet Address", companyKeypair.publicKey.toString());
-  
-  // Create provider manually instead of using env()
+  // Create provider
   const provider = new anchor.AnchorProvider(
     connection,
     new anchor.Wallet(companyKeypair),
@@ -102,123 +136,103 @@ async function main() {
   anchor.setProvider(provider);
   
   // Create program instance
-  const programId = new PublicKey("AyU7HfAP36feEsNTfAifzLxDcT7kCYPER6HxWeb7czmX");
+  const programId = new PublicKey(PROGRAM_ID);
   const program = new anchor.Program(idl as unknown as PeerToken, programId, provider);
   
-  logDetail("Program ID", programId.toString());
-  
-  // Set up the mint (normally created by Sushank's program)
-  const MINT_ADDRESS = "C3rzZ2ToAG9P2bBHEqTXK3Gk85g5VJMuU7rKPHahQq61"; // Replace with actual mint
-  let mint = new PublicKey(MINT_ADDRESS);
-  
-  // Get the company's token account for this mint
-  let companyTokenAccount = getAssociatedTokenAddressSync(
+  return { connection, provider, program };
+}
+
+// Validate mint and company token account
+async function setupTokenAccounts(connection: Connection, companyKeypair: Keypair) {
+  const mint = new PublicKey(MINT_ADDRESS);
+  const companyTokenAccount = getAssociatedTokenAddressSync(
     mint,
     companyKeypair.publicKey
   );
   
-  // Log mint and company token account info
-  logDetail("Token Mint Address", mint.toString());
-  logDetail("Company Token Account", companyTokenAccount.toString());
-  
   // Check if mint exists
   try {
     const mintInfo = await getMint(connection, mint);
-    logDetail("Mint Status", "✓ Exists");
-    logDetail("Mint Authority", mintInfo.mintAuthority?.toString() || "None");
-    logDetail("Mint Decimals", mintInfo.decimals.toString());
+    Logger.detail("Mint Status", "✓ Exists");
+    Logger.detail("Mint Authority", mintInfo.mintAuthority?.toString() || "None");
+    Logger.detail("Mint Decimals", mintInfo.decimals.toString());
   } catch (error) {
-    // Mint doesn't exist
-    logSection("MINT CHECK FAILED");
-    logDetail("Status", "✗ Token mint doesn't exist");
-    logDetail("Required Action", "Use the mint address provided by Sushank");
-    console.error("Error details:", error);
-    return;
+    Logger.section("MINT CHECK FAILED");
+    Logger.detail("Status", "✗ Token mint doesn't exist");
+    Logger.detail("Required Action", "Use a valid mint address");
+    throw error;
   }
   
-  // Check if company token account exists and create it if not
+  // Check if company token account exists
   const companyTokenAccountInfo = await connection.getAccountInfo(companyTokenAccount);
   
   if (!companyTokenAccountInfo) {
-    logSection("CREATING COMPANY TOKEN ACCOUNT");
-    logDetail("Status", "Creating Associated Token Account for company wallet");
-    
-    // Create the ATA for company wallet
-    const transaction = new Transaction().add(
-      createAssociatedTokenAccountInstruction(
-        companyKeypair.publicKey, // payer
-        companyTokenAccount,      // ata
-        companyKeypair.publicKey, // owner
-        mint                      // mint
-      )
-    );
-    
-    try {
-      const signature = await sendAndConfirmTransaction(
-        connection,
-        transaction,
-        [companyKeypair]
-      );
-      logDetail("Transaction Signature", signature);
-      logDetail("Status", "✓ Company Token Account created successfully");
-    } catch (error) {
-      logDetail("Status", "✗ Failed to create Company Token Account");
-      console.error("Error details:", error);
-      return;
-    }
+    Logger.section("COMPANY TOKEN ACCOUNT CHECK FAILED");
+    Logger.detail("Status", "✗ Company token account doesn't exist");
+    Logger.detail("Token Account Address", companyTokenAccount.toString());
+    Logger.detail("Required Action", "Create the token account before running this script");
+    throw new Error("Company token account does not exist");
   } else {
-    logDetail("Company Token Account", "Already exists");
+    Logger.detail("Company Token Account", "✓ Exists");
   }
   
   // Check current balance
   try {
     const tokenAccountInfo = await getAccount(connection, companyTokenAccount);
     const currentBalance = Number(tokenAccountInfo.amount);
-    logDetail("Current Company Balance", currentBalance.toString());
+    Logger.detail("Current Company Balance", currentBalance.toString());
     
     if (currentBalance === 0) {
-      logDetail("Warning", "Company token account has 0 balance");
-      logDetail("Action Needed", "Fund this account with tokens before distribution");
+      Logger.detail("Warning", "Company token account has 0 balance");
+      Logger.detail("Action Needed", "Fund this account with tokens before distribution");
     }
+    
+    return { mint, companyTokenAccount, currentBalance };
   } catch (error) {
-    logDetail("Current Balance Check", "Failed to get current balance");
+    Logger.detail("Current Balance Check", "Failed to get current balance");
+    return { mint, companyTokenAccount, currentBalance: 0 };
   }
-  
-  // Process Dimitri's input
-  logHeader("PROCESSING INPUT FROM DIMITRI");
-  console.log("Input data received:");
-  console.log(JSON.stringify(dimitriInputExample, null, 2));
-  
-  // Map Dimitri's data to our format
-  const users = dimitriInputExample.users.map(user => ({
-    userId: user.userId,
+}
+
+// Process and validate input
+function processInput(distributionData: Distribution): {
+  processedUsers: ProcessedUser[],
+  distributionUsers: ProcessedUser[],
+  totalTokens: number
+} {
+  // Map the data to our format
+  const processedUsers = distributionData.users.map(user => ({
     wallet: new PublicKey(user.walletAddress),
-    gems: user.gems
+    tokenAmount: user.tokenAmount
   }));
   
-  // Include only users with gems > 0 in the actual distribution
-  const distributionUsers = users.filter(user => user.gems > 0);
-  const totalGems = dimitriInputExample.totalGems;
+  // Include only users with tokenAmount > 0 in the actual distribution
+  const distributionUsers = processedUsers.filter(user => user.tokenAmount > 0);
+  const totalTokens = distributionData.users.reduce((sum, user) => sum + user.tokenAmount, 0);
   
   // Validate the data
-  logSection("VALIDATING DATA");
-  const totalGemsFromData = distributionUsers.reduce((sum, user) => sum + user.gems, 0);
+  Logger.section("VALIDATING DATA");
+  const totalTokensFromData = distributionUsers.reduce((sum, user) => sum + user.tokenAmount, 0);
   
-  logDetail("Total Gems Expected", totalGems.toString());
-  logDetail("Total Gems from Data", totalGemsFromData.toString());
+  Logger.detail("Total Tokens Expected", totalTokens.toString());
+  Logger.detail("Total Tokens from Data", totalTokensFromData.toString());
   
-  if (totalGemsFromData !== totalGems) {
-    console.error("ERROR: Total gems don't match the sum of user gems");
-    return;
+  if (totalTokensFromData !== totalTokens) {
+    throw new Error("Total tokens don't match the sum of user tokens");
   }
   
-  logDetail("Validation", "✓ Passed");
+  Logger.detail("Validation", "✓ Passed");
   
-  // Log all user wallets and their ATA information
-  logSection("USER WALLETS AND TOKEN ACCOUNTS");
-  
-  // Create array to store all user data for logging
-  const userDetails = [];
+  return { processedUsers, distributionUsers, totalTokens };
+}
+
+// Check user token accounts
+async function checkUserAccounts(
+  connection: Connection,
+  users: ProcessedUser[],
+  mint: PublicKey
+): Promise<UserDetail[]> {
+  const userDetails: UserDetail[] = [];
   
   for (const user of users) {
     const userTokenAccount = getAssociatedTokenAddressSync(
@@ -243,181 +257,234 @@ async function main() {
     }
     
     userDetails.push({
-      userId: user.userId,
       wallet: user.wallet.toString(),
       tokenAccount: userTokenAccount.toString(),
-      accountExists: accountExists,
+      accountExists,
       currentBalance: tokenBalance,
-      gems: user.gems
+      tokenAmount: user.tokenAmount
     });
   }
   
   // Log all user details
   userDetails.forEach((user, index) => {
-    console.log(`\nUser ${index + 1}: ${user.userId}`);
-    logDetail("Wallet Address", user.wallet);
-    logDetail("Token Account Address", user.tokenAccount);
-    logDetail("Token Account Exists", user.accountExists ? "Yes" : "No (will be created)");
-    logDetail("Current Token Balance", user.currentBalance);
-    logDetail("Gems for Distribution", user.gems.toString());
+    console.log(`\nUser ${index + 1}: ${user.wallet}`); 
+    Logger.detail("Wallet Address", user.wallet);
+    Logger.detail("Token Account Address", user.tokenAccount);
+    Logger.detail("Token Account Exists", user.accountExists ? "Yes" : "No (will be created)");
+    Logger.detail("Current Token Balance", user.currentBalance);
+    Logger.detail("Tokens for Distribution", user.tokenAmount.toString());
   });
   
-  // Initialize the distribution
-  logHeader("INITIALIZING DISTRIBUTION");
-  
-  // Create a distribution account
-  const distributionInfo = Keypair.generate();
-  logDetail("Distribution Account", distributionInfo.publicKey.toString());
-  
-  // Format recipients for the program
-  const recipients = distributionUsers.map(user => ({
-    wallet: user.wallet,
-    gems: new anchor.BN(user.gems)
-  }));
+  return userDetails;
+}
 
-  try {
-    // Initialize distribution
-    logSection("CREATING DISTRIBUTION");
-    const distributeTx = await program.methods
-      .distributeTokens(recipients, new anchor.BN(totalGems))
-      .accounts({
-        mint: mint,
-        sourceTokenAccount: companyTokenAccount,
-        authority: companyKeypair.publicKey,
-        distributionInfo: distributionInfo.publicKey,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-        rent: SYSVAR_RENT_PUBKEY,
-      })
-      .signers([distributionInfo])
-      .rpc();
-      
-    logDetail("Status", "✓ Success");
-    logDetail("Transaction Signature", distributeTx);
+// Execute distributions
+async function executeDistributions(
+  program: anchor.Program<PeerToken>,
+  connection: Connection,
+  distributionUsers: ProcessedUser[],
+  mint: PublicKey,
+  companyTokenAccount: PublicKey,
+  companyKeypair: Keypair
+): Promise<TransferResult[]> {
+  const successfulTransfers: TransferResult[] = [];
+  
+  for (const user of distributionUsers) {
+    Logger.section(`PROCESSING USER: ${user.wallet}`);
+    Logger.detail("Wallet", user.wallet.toString());
+    Logger.detail("Tokens", user.tokenAmount.toString());
     
-    // Execute transfers for each user with gems
-    logHeader("EXECUTING DISTRIBUTIONS");
+    // Derive user's token account 
+    const userTokenAccount = getAssociatedTokenAddressSync(
+      mint,
+      user.wallet
+    );
     
-    // Track users who received tokens
-    const successfulTransfers = [];
+    // Check if account exists before transfer
+    const accountExistsBefore = await connection.getAccountInfo(userTokenAccount) !== null;
+    Logger.detail("Token Account", userTokenAccount.toString());
+    Logger.detail("Account Exists Before", accountExistsBefore ? "Yes" : "No (will be created)");
     
-    for (const user of distributionUsers) {
-      logSection(`PROCESSING USER: ${user.userId}`);
-      logDetail("Wallet", user.wallet.toString());
-      logDetail("Gems", user.gems.toString());
-      
-      // Derive user's token account 
-      const userTokenAccount = getAssociatedTokenAddressSync(
-        mint,
-        user.wallet
-      );
-      
-      // Check if account exists before transfer
-      const accountExistsBefore = await connection.getAccountInfo(userTokenAccount) !== null;
-      logDetail("Token Account", userTokenAccount.toString());
-      logDetail("Account Exists Before", accountExistsBefore ? "Yes" : "No (will be created)");
-      
-      try {
-        // Execute the distribution
-        const executeTx = await program.methods
-          .executeDistribution(new anchor.BN(user.gems))
-          .accounts({
-            mint: mint,
-            sourceTokenAccount: companyTokenAccount,
-            destinationTokenAccount: userTokenAccount,
-            recipient: user.wallet,
-            authority: companyKeypair.publicKey,
-            distributionInfo: distributionInfo.publicKey,
-            tokenProgram: TOKEN_PROGRAM_ID,
-            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-            systemProgram: SystemProgram.programId,
-            rent: SYSVAR_RENT_PUBKEY,
-          })
-          .rpc();
-          
-        // Check if account exists after transfer
-        const accountExistsAfter = await connection.getAccountInfo(userTokenAccount) !== null;
-        logDetail("Account Exists After", accountExistsAfter ? "Yes" : "Yes (created during transfer)");
+    try {
+      // If account doesn't exist, create it first
+      if (!accountExistsBefore) {
+        Logger.detail("Creating ATA", "Creating token account for recipient...");
         
-        // Get token balance
-        let finalBalance = "Error fetching";
-        try {
-          const tokenAccountInfo = await getAccount(connection, userTokenAccount);
-          finalBalance = tokenAccountInfo.amount.toString();
-        } catch (error) {
-          // Handle error
+        const createAtaIx = createAssociatedTokenAccountInstruction(
+          companyKeypair.publicKey,  // payer
+          userTokenAccount,          // associated token account address
+          user.wallet,               // token account owner
+          mint                       // token mint
+        );
+        
+        const createAtaTx = new Transaction().add(createAtaIx);
+        
+        const createAtaSignature = await sendAndConfirmTransaction(
+          connection,
+          createAtaTx,
+          [companyKeypair]
+        );
+        
+        Logger.detail("ATA Creation", "✓ Token account created");
+        Logger.detail("ATA Tx Signature", createAtaSignature);
+        
+        // Verify the account was created
+        const accountCreated = await connection.getAccountInfo(userTokenAccount) !== null;
+        if (!accountCreated) {
+          throw new Error("Failed to create token account");
         }
-        
-        logDetail("Final Token Balance", finalBalance);
-        logDetail("Transfer Status", "✓ Success");
-        logDetail("Transaction Signature", executeTx);
-        
-        successfulTransfers.push({
-          userId: user.userId,
-          wallet: user.wallet.toString(),
-          gems: user.gems,
-          tokenAccount: userTokenAccount.toString(),
-          accountCreated: !accountExistsBefore && accountExistsAfter,
-          finalBalance
-        });
-        
-      } catch (error) {
-        logDetail("Transfer Status", "✗ Failed");
-        console.error(`Error details:`, error);
       }
+      
+      // Now execute the transfer (token account is guaranteed to exist)
+      const transferTx = await program.methods
+        .transferTokens(new anchor.BN(user.tokenAmount))
+        .accounts({
+          mint: mint,
+          sourceTokenAccount: companyTokenAccount,
+          destinationTokenAccount: userTokenAccount,
+          recipient: user.wallet,
+          authority: companyKeypair.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+        
+      // Get token balance after transfer
+      let finalBalance = "Error fetching";
+      try {
+        const tokenAccountInfo = await getAccount(connection, userTokenAccount);
+        finalBalance = tokenAccountInfo.amount.toString();
+      } catch (error) {
+        Logger.error("Failed to get final balance", error);
+      }
+      
+      Logger.detail("Final Token Balance", finalBalance);
+      Logger.detail("Transfer Status", "✓ Success");
+      Logger.detail("Transaction Signature", transferTx);
+      
+      successfulTransfers.push({
+        wallet: user.wallet.toString(),
+        tokenAmount: user.tokenAmount,
+        tokenAccount: userTokenAccount.toString(),
+        accountCreated: !accountExistsBefore,
+        finalBalance
+      });
+      
+    } catch (error) {
+      Logger.detail("Transfer Status", "✗ Failed");
+      Logger.error(`Transfer failed for user ${user.wallet.toString()}`, error);
+    }
+  }
+  
+  return successfulTransfers;
+}
+
+// Generate a summary of transfers
+function logTransferSummary(
+  transferResults: TransferResult[],
+  totalTokens: number,
+  companyFinalBalance: string,
+  initTx: string
+): void {
+  Logger.header("DISTRIBUTION SUMMARY");
+  Logger.detail("Total Users Processed", transferResults.length.toString());
+  Logger.detail("Successful Transfers", transferResults.length.toString());
+  Logger.detail("Total Tokens Distributed", totalTokens.toString());
+  Logger.detail("Company Final Balance", companyFinalBalance);
+  Logger.detail("Initialization Transaction", initTx);
+  
+  // Log details of each transfer
+  Logger.header("TRANSFER DETAILS");
+  transferResults.forEach((result, index) => {
+    Logger.section(`TRANSFER ${index + 1}`);
+    Logger.detail("Wallet", result.wallet);
+    Logger.detail("Tokens Transferred", result.tokenAmount.toString());
+    Logger.detail("Token Account", result.tokenAccount);
+    Logger.detail("Account Created", result.accountCreated ? "Yes" : "No");
+    Logger.detail("Final Balance", result.finalBalance);
+  });
+}
+
+// ==================== Main Function ====================
+async function main() {
+  try {
+    // Load company keypair
+    const companyKeypair = await loadKeypairFromFile(WALLET_PATH);
+    
+    Logger.header("COMPANY WALLET INFORMATION");
+    Logger.detail("Company Wallet Address", companyKeypair.publicKey.toString());
+    
+    // Initialize connection and program
+    const { connection, program } = await initializeProgram(companyKeypair);
+    Logger.detail("Program ID", PROGRAM_ID);
+    
+    // Setup token accounts
+    const { mint, companyTokenAccount, currentBalance } = await setupTokenAccounts(connection, companyKeypair);
+    
+    // Process input data
+    Logger.header("PROCESSING INPUT FROM DIMITRI");
+    console.log("Input data received:");
+    console.log(JSON.stringify(dimitriInputExample, null, 2));
+    
+    const { processedUsers, distributionUsers, totalTokens } = processInput(dimitriInputExample);
+    
+    // Verify company has enough tokens for distribution
+    if (currentBalance < totalTokens) {
+      Logger.header("INSUFFICIENT FUNDS");
+      Logger.detail("Current Balance", currentBalance.toString());
+      Logger.detail("Required Balance", totalTokens.toString());
+      Logger.detail("Shortfall", (totalTokens - currentBalance).toString());
+      Logger.detail("Action Needed", "Please fund the company token account with more tokens");
+      throw new Error("Insufficient tokens for distribution");
     }
     
-    // Finalize the distribution
-    logHeader("FINALIZING DISTRIBUTION");
+    // Check user accounts
+    Logger.section("USER WALLETS AND TOKEN ACCOUNTS");
+    await checkUserAccounts(connection, processedUsers, mint);
     
-    const finalizeTx = await program.methods
-      .finalizeDistribution()
+    // Optional: Initialize the program (emits an event)
+    Logger.header("INITIALIZING TOKEN TRANSFER");
+    const initTx = await program.methods
+      .initialize()
       .accounts({
         authority: companyKeypair.publicKey,
-        distributionInfo: distributionInfo.publicKey,
         systemProgram: SystemProgram.programId,
       })
       .rpc();
-      
-    logDetail("Status", "✓ Success");
-    logDetail("Transaction Signature", finalizeTx);
+    Logger.detail("Initialization Tx", initTx);
     
-    // Final summary
-    logHeader("DISTRIBUTION SUMMARY");
-    logDetail("Total Users Processed", distributionUsers.length.toString());
-    logDetail("Successful Transfers", successfulTransfers.length.toString());
-    logDetail("Total Gems Distributed", totalGems.toString());
+    // Execute token transfers
+    Logger.header("EXECUTING TOKEN TRANSFERS");
+    const successfulTransfers = await executeDistributions(
+      program,
+      connection,
+      distributionUsers,
+      mint,
+      companyTokenAccount,
+      companyKeypair
+    );
     
     // Get company final balance
+    let companyFinalBalance = "Error fetching balance";
     try {
       const finalCompanyInfo = await getAccount(connection, companyTokenAccount);
-      logDetail("Company Final Balance", finalCompanyInfo.amount.toString());
+      companyFinalBalance = finalCompanyInfo.amount.toString();
     } catch (error) {
-      logDetail("Company Final Balance", "Error fetching balance");
+      Logger.error("Failed to fetch company final balance", error);
     }
     
-    // Save report to file
-    const report = {
-      distributionId: dimitriInputExample.distributionId,
-      timestamp: new Date().toISOString(),
-      companyWallet: companyKeypair.publicKey.toString(),
-      companyTokenAccount: companyTokenAccount.toString(),
-      mint: mint.toString(),
-      distributionAccount: distributionInfo.publicKey.toString(),
-      totalGems,
+    // Log transfer summary
+    logTransferSummary(
       successfulTransfers,
-      transactionHashes: {
-        initialization: distributeTx,
-        finalization: finalizeTx
-      }
-    };
-    
-    writeFileSync("distribution-report.json", JSON.stringify(report, null, 2));
-    logDetail("Report Saved", "distribution-report.json");
+      totalTokens,
+      companyFinalBalance,
+      initTx
+    );
     
   } catch (error) {
-    logHeader("ERROR DURING DISTRIBUTION");
-    console.error("Error details:", error);
+    Logger.header("ERROR DURING DISTRIBUTION");
+    Logger.error("Distribution process failed", error);
   }
 }
 
