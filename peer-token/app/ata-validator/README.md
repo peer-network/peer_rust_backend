@@ -39,7 +39,7 @@ This tool validates Associated Token Accounts (ATAs) for a list of wallet addres
 ```json
 {
   "timestamp": "2023-06-15T12:34:56.789Z",
-  "mintAddress": "DAApXWPZsSdDUPRhmSgQTuwKqT8ooR9oboGz9wLK69n9",
+  "mintAddress": "5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW",
   "cluster": "devnet",
   "results": [
     {

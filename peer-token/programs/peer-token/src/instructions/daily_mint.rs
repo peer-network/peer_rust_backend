@@ -3,7 +3,7 @@ use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
 use anchor_spl::token_2022::MintTo;
 use chrono::{DateTime, Utc};
 
-pub fn handler(ctx: Context<DailyMint>, amount: u64) -> Result<()> {
+pub fn handler(ctx: Context<DailyMintArgs>, amount: u64) -> Result<()> {
     // Get current time
     let current_time = Clock::get()?.unix_timestamp;
     
@@ -46,7 +46,7 @@ pub fn handler(ctx: Context<DailyMint>, amount: u64) -> Result<()> {
 
 /// Context for minting tokens
 #[derive(Accounts)]
-pub struct DailyMint<'info> {
+pub struct DailyMintArgs<'info> {
     /// The token mint
     #[account(mut)]
     pub peer_mint: InterfaceAccount<'info, Mint>,
@@ -86,20 +86,7 @@ pub struct LastMint {
 }
 
 /// Helper function to get the peer token account address
-pub fn get_peer_token_account_address(
-    authority: Pubkey,
-    mint: Pubkey,
-) -> Result<Pubkey> {
-    let (peer_token_account, _) = Pubkey::find_program_address(
-        &[
-            b"peer-token-account",
-            authority.as_ref(),
-            mint.as_ref(),
-        ],
-        &crate::ID
-    );
-    Ok(peer_token_account)
-}
+
 
 #[error_code]
 pub enum DailyMintError {

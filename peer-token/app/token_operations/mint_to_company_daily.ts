@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Set up the program ID
-const PROGRAM_ID = new PublicKey("DAApXWPZsSdDUPRhmSgQTuwKqT8ooR9oboGz9wLK69n9");
+const PROGRAM_ID = new PublicKey("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
 
 async function main() {
     try {

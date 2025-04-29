@@ -4,17 +4,36 @@ import { PublicKey, Connection, Keypair, SystemProgram, clusterApiUrl } from "@s
 import { 
     TOKEN_2022_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID,
-    getAssociatedTokenAddressSync
+    getAssociatedTokenAddressSync,
+    getAccount
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as path from 'path';
 
 // Set up the program ID
-const PROGRAM_ID = new PublicKey("DAApXWPZsSdDUPRhmSgQTuwKqT8ooR9oboGz9wLK69n9");
+const PROGRAM_ID = new PublicKey("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
+
+interface GemData {
+    data: {
+        GetGemsForDay: {
+            status: string;
+            ResponseCode: string;
+            Date: string;
+            affectedRows: {
+                data: Array<{
+                    userId?: string;
+                    walletAddress?: string;
+                    gems?: string;
+                    totalGems?: string;
+                }>;
+            };
+        };
+    };
+}
 
 async function main() {
     try {
-        console.log("\n🚀 Starting user token account creation...");
+        console.log("\n🚀 Starting user token account processing...");
         
         // Set up connection
         const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
@@ -25,10 +44,6 @@ async function main() {
             Buffer.from(JSON.parse(fs.readFileSync(companyKeypairPath, "utf-8")))
         );
         console.log("\n💼 Company wallet (fee payer):", companyKeypair.publicKey.toString());
-
-        // Generate a random user wallet (for testing)
-        const userWallet = Keypair.generate();
-        console.log("👤 User wallet (account owner):", userWallet.publicKey.toString());
 
         // Create provider with company wallet
         const provider = new anchor.AnchorProvider(
@@ -46,16 +61,12 @@ async function main() {
         // Create program interface
         const program = new anchor.Program(idl, PROGRAM_ID, provider);
 
-        console.log("\n====================================");
-        console.log("🔄 Checking Mint and Creating User Token Account");
-        console.log("====================================");
-        
         // Derive the token mint PDA
         const [mintPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("peer-token")],
             PROGRAM_ID
         );
-        console.log("🔹 Mint PDA:", mintPda.toString());
+        console.log("\n🔹 Mint PDA:", mintPda.toString());
 
         // Check if mint exists
         console.log("\n🔍 Checking if mint account exists...");
@@ -71,69 +82,109 @@ async function main() {
         console.log("🔹 Mint Account Size:", mintAccountInfo.data.length);
         console.log("🔹 Mint Account Owner:", mintAccountInfo.owner.toString());
 
-        // Calculate the user ATA address
-        const userAta = getAssociatedTokenAddressSync(
-            mintPda,
-            userWallet.publicKey,
-            false,
-            TOKEN_2022_PROGRAM_ID
-        );
-        console.log("\n🔍 Checking if user token account exists...");
-        console.log("🔹 User Token Account Address:", userAta.toString());
+        // Load Gemdata.json
+        const gemDataPath = path.join(process.cwd(), "app", "ata-validator", "data", "Gemdata.json");
+        console.log("\n🔍 Looking for Gemdata.json at:", gemDataPath);
         
-        // Check if user token account exists
-        const userAtaInfo = await connection.getAccountInfo(userAta);
-        
-        if (userAtaInfo) {
-            console.log("✅ User token account already exists!");
-            console.log("🔹 Account Size:", userAtaInfo.data.length);
-            console.log("🔹 Owner Program:", userAtaInfo.owner.toString());
-            console.log("\n📝 Note: Only one user token account can exist per user per mint.");
-            return;
+        if (!fs.existsSync(gemDataPath)) {
+            throw new Error(`❌ Gemdata.json not found at: ${gemDataPath}\nPlease ensure the file exists at this location.`);
         }
 
-        console.log("⏳ Creating user token account...");
-        
+        let gemData: GemData;
         try {
-            // Create the user token account using the user_token_account.rs instruction
-            const userAtaTx = await program.methods
-                .createUserTokenAccount()
-                .accounts({
-                    companyAuthority: companyKeypair.publicKey,
-                    userWallet: userWallet.publicKey,
-                    peerMint: mintPda,
-                    userTokenAccount: userAta,
-                    systemProgram: SystemProgram.programId,
-                    tokenProgram: TOKEN_2022_PROGRAM_ID,
-                    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
-                })
-                .signers([companyKeypair])  // Company signs to pay
-                .rpc();
-                
-            console.log("✅ User token account created successfully");
-            console.log("🔹 Transaction:", userAtaTx);
-            console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${userAtaTx}?cluster=devnet`);
+            const fileContent = fs.readFileSync(gemDataPath, 'utf8');
+            gemData = JSON.parse(fileContent);
             
-            // Verify creation
-            console.log("\n🔍 Verifying user token account creation...");
-            const verifyAtaInfo = await connection.getAccountInfo(userAta);
-            if (verifyAtaInfo) {
-                console.log("✅ User token account verified!");
-                console.log("🔹 Account Size:", verifyAtaInfo.data.length);
-                console.log("🔹 Owner Program:", verifyAtaInfo.owner.toString());
+            if (!gemData.data?.GetGemsForDay?.affectedRows?.data) {
+                throw new Error("❌ Invalid Gemdata.json format: missing required data structure");
+            }
+            
+            const users = gemData.data.GetGemsForDay.affectedRows.data.filter(user => user.userId && user.walletAddress);
+            console.log(`\n📊 Found ${users.length} users in Gemdata.json`);
+            
+            // Process each user
+            for (const user of users) {
+                if (!user.userId || !user.walletAddress) continue;
+                
+                console.log("\n====================================");
+                console.log(`👤 Processing User ID: ${user.userId}`);
+                console.log(`🔑 Wallet Address: ${user.walletAddress}`);
+                console.log(`💎 Gems: ${user.gems || '0'}`);
+                
+                const userWallet = new PublicKey(user.walletAddress);
+                
+                // Calculate the user ATA address
+                const userAta = getAssociatedTokenAddressSync(
+                    mintPda,
+                    userWallet,
+                    false,
+                    TOKEN_2022_PROGRAM_ID
+                );
+                console.log("🔹 User Token Account Address:", userAta.toString());
+                
+                // Check if user token account exists
+                const userAtaInfo = await connection.getAccountInfo(userAta);
+                
+                if (userAtaInfo) {
+                    console.log("✅ User token account exists!");
+                    console.log("🔹 Account Size:", userAtaInfo.data.length);
+                    console.log("🔹 Owner Program:", userAtaInfo.owner.toString());
+                    
+                    // Get token balance
+                    try {
+                        const tokenAccount = await getAccount(connection, userAta);
+                        console.log(`💰 Token Balance: ${tokenAccount.amount}`);
+                    } catch (error) {
+                        console.log("❌ Could not fetch token balance");
+                    }
+                } else {
+                    console.log("⏳ Creating user token account...");
+                    
+                    try {
+                        // Create the user token account
+                        const userAtaTx = await program.methods
+                            .createUserTokenAccount()
+                            .accounts({
+                                peerAuthority: companyKeypair.publicKey,
+                                userWallet: userWallet,
+                                peerMint: mintPda,
+                                userTokenAccount: userAta,
+                                systemProgram: SystemProgram.programId,
+                                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
+                            })
+                            .signers([companyKeypair])
+                            .rpc();
+                            
+                        console.log("✅ User token account created successfully");
+                        console.log("🔹 Transaction:", userAtaTx);
+                        console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${userAtaTx}?cluster=devnet`);
+                        
+                        // Verify creation
+                        const verifyAtaInfo = await connection.getAccountInfo(userAta);
+                        if (verifyAtaInfo) {
+                            console.log("✅ User token account verified!");
+                            console.log("🔹 Account Size:", verifyAtaInfo.data.length);
+                            console.log("🔹 Owner Program:", verifyAtaInfo.owner.toString());
+                        }
+                    } catch (error) {
+                        console.error("❌ Error creating user token account:", error);
+                        if (error instanceof Error) console.error(error.message);
+                    }
+                }
             }
         } catch (error) {
-            console.error("❌ Error creating user token account:", error);
-            if (error instanceof Error) console.error(error.message);
+            if (error instanceof SyntaxError) {
+                throw new Error(`❌ Invalid JSON format in Gemdata.json: ${error.message}`);
+            }
+            throw error;
         }
 
         console.log("\n📝 IMPORTANT NOTES:");
-        console.log("1. User token account is created using Associated Token Account (ATA)");
-        console.log("2. Only one user token account can exist per user per mint");
-        console.log("3. The account address is derived from mint and user wallet");
-        console.log("4. The account is automatically linked to the mint");
-        console.log("5. No PDAs are used - this is a standard Solana ATA");
-        console.log("6. Company pays for creation but user owns the account");
+        console.log("1. Each user can have only one token account per mint");
+        console.log("2. The account address is derived from mint and user wallet");
+        console.log("3. The account is automatically linked to the mint");
+        console.log("4. Company pays for creation but user owns the account");
     } catch (error) {
         console.error("\n❌ ERROR:", error);
         if (error instanceof Error) {

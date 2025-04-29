@@ -19,7 +19,7 @@ import { MPL_TOKEN_METADATA_PROGRAM_ID } from "@metaplex-foundation/mpl-token-me
 const METADATA_PROGRAM_ID = new PublicKey(MPL_TOKEN_METADATA_PROGRAM_ID);
 
 // Set up the program ID (update with your deployed program ID)
-const PROGRAM_ID = new PublicKey("DAApXWPZsSdDUPRhmSgQTuwKqT8ooR9oboGz9wLK69n9");
+const PROGRAM_ID = new PublicKey("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
 
 // Token details
 const TOKEN_NAME = "Peer Token Beta V3.5";
