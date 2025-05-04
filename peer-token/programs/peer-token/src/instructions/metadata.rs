@@ -2,11 +2,10 @@ use {
     anchor_lang::prelude::*,
     anchor_spl::{
         metadata::{
-            // create_metadata_accounts_v3, mpl_token_metadata::types::{DataV2, TokenStandard},
-            // CreateMetadataAccountsV3, Metadata,
-            create_metadata_accounts_v3, 
-            mpl_token_metadata::types::DataV2,
-            CreateMetadataAccountsV3, 
+            mpl_token_metadata::{
+                instructions::CreateV1CpiBuilder,
+                types::{TokenStandard, PrintSupply},
+            },
             Metadata,
         },
         token_interface::{Mint, TokenInterface},
@@ -24,34 +23,29 @@ pub fn handler(
     msg!("Metadata account address: {}", &ctx.accounts.metadata_account.key());
     msg!("Token decimals: {}", token_decimals);
 
-    // Cross Program Invocation (CPI)
-    // Invoking the create_metadata_account_v3 instruction on the token metadata program
-    create_metadata_accounts_v3(
-        CpiContext::new(
-            ctx.accounts.token_metadata_program.to_account_info(),
-            CreateMetadataAccountsV3 {
-                metadata: ctx.accounts.metadata_account.to_account_info(),
-                mint: ctx.accounts.mint_account.to_account_info(),
-                mint_authority: ctx.accounts.payer.to_account_info(),
-                update_authority: ctx.accounts.payer.to_account_info(),
-                payer: ctx.accounts.payer.to_account_info(),
-                system_program: ctx.accounts.system_program.to_account_info(),
-                rent: ctx.accounts.rent.to_account_info(),
-            },
-        ),
-        DataV2 {
-            name: token_name,
-            symbol: token_symbol,
-            uri: token_uri,
-            seller_fee_basis_points: 0,
-            creators: None,
-            collection: None,
-            uses: None,
-        },
-        false, // Is mutable (false for fungible tokens)
-        true,  // Update authority is signer
-        None,  // Collection details (None for fungible tokens)
-    )?;
+    // Use the mint_account as a signer using a PDA with seeds
+    // This is required by the Metaplex metadata API
+    let mint_seeds = &[b"peer-token".as_ref(), &[ctx.bumps.mint_account]];
+    let mint_signer = &[&mint_seeds[..]];
+
+    // Use the CreateV1CpiBuilder for creating token metadata
+    CreateV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
+        .metadata(&ctx.accounts.metadata_account)
+        .mint(&ctx.accounts.mint_account.to_account_info(), false) // Don't require mint to be signer
+        .authority(&ctx.accounts.payer)
+        .payer(&ctx.accounts.payer)
+        .update_authority(&ctx.accounts.payer, true)
+        .system_program(&ctx.accounts.system_program)
+        .sysvar_instructions(&ctx.accounts.sysvar_instructions)
+        .spl_token_program(&ctx.accounts.token_program.to_account_info())
+        .token_standard(TokenStandard::Fungible)
+        .seller_fee_basis_points(0)
+        .print_supply(PrintSupply::Unlimited)
+        .name(token_name)
+        .symbol(token_symbol)
+        .uri(token_uri)
+        .decimals(token_decimals)
+        .invoke_signed(mint_signer)?; // Use invoke_signed instead of invoke
 
     msg!("Metaplex metadata created successfully for FUNGIBLE Token-2022 token");
     Ok(())
@@ -69,6 +63,8 @@ pub struct CreateMetadataArgs<'info> {
     /// Must have decimals > 0 to be treated as a fungible token
     #[account(
         mut,
+        seeds = [b"peer-token"],
+        bump,
         constraint = mint_account.mint_authority.unwrap() == payer.key(),
         constraint = mint_account.to_account_info().owner == &token_program.key(),
         constraint = mint_account.decimals > 0
@@ -93,6 +89,10 @@ pub struct CreateMetadataArgs<'info> {
     
     /// System program
     pub system_program: Program<'info, System>,
+    
+    /// Sysvar Instructions 
+    /// CHECK: Used by the Metaplex program
+    pub sysvar_instructions: UncheckedAccount<'info>,
     
     /// Rent sysvar
     pub rent: Sysvar<'info, Rent>,

@@ -14,7 +14,7 @@ pub use instructions::daily_mint::*;
 pub use instructions::airdrop::*;
 
 
-declare_id!("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
+declare_id!("B72Hy2z1KS5vvjkaKUv3tn5LG72PwjfnduX5rub35P77");
 
 
 #[program]
