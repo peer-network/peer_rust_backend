@@ -8,4 +8,5 @@ test-ledger
 .yarn
 env 
 .ata-validator
+keys
 

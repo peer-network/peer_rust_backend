@@ -15,7 +15,7 @@ pub use instructions::airdrop::*;
 
 
 
-declare_id!("CYsrrJCrUUpW5Xc3jtjWcD8kUCvDT98aZ1TqkwsswMBd");
+declare_id!("E1ig6heuoWm3gLqyQMiK5HLdK2yGGe8hwC3Pj3Acctag");
 
 
 #[program]
