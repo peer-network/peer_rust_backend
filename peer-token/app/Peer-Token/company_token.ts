@@ -7,7 +7,9 @@ import {
     getAssociatedTokenAddressSync
 } from "@solana/spl-token";
 import * as fs from 'fs';
-import * as path from 'path';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 // Set up the program ID
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
@@ -40,8 +42,8 @@ async function main() {
         anchor.setProvider(provider);
 
         // Load the IDL
-        const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        const idlFile = fs.readFileSync(idlPath, 'utf8');
+        // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
+        const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
         const idl = JSON.parse(idlFile);
 
         // Create program interface

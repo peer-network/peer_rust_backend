@@ -15,6 +15,9 @@ import {
 import { Metaplex, keypairIdentity } from "@metaplex-foundation/js";
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 // Program and Token Constants
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!)
@@ -52,8 +55,8 @@ async function main() {
         );
         anchor.setProvider(provider);
 
-        const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        const idlFile = fs.readFileSync(idlPath, 'utf8');
+        // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
+        const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
         const idl = JSON.parse(idlFile);
         const program = new anchor.Program(idl, PROGRAM_ID, provider);
 
