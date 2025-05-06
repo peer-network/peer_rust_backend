@@ -14,7 +14,8 @@ pub use instructions::daily_mint::*;
 pub use instructions::airdrop::*;
 
 
-declare_id!("B72Hy2z1KS5vvjkaKUv3tn5LG72PwjfnduX5rub35P77");
+
+declare_id!("CYsrrJCrUUpW5Xc3jtjWcD8kUCvDT98aZ1TqkwsswMBd");
 
 
 #[program]
@@ -65,10 +66,10 @@ pub mod peer_token {
         instructions::daily_mint::handler(ctx, amount)
     }
   
-    /// Initialize token transfer functionality
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        instructions::airdrop::initialize_handler(ctx)
-    }
+    // /// Initialize token transfer functionality
+    // pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+    //     instructions::airdrop::initialize_handler(ctx)
+    // }
     
     /// Transfers tokens to a recipient wallet
     pub fn transfer_tokens(

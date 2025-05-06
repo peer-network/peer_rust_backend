@@ -10,19 +10,19 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Set up the program ID
-const PROGRAM_ID = new PublicKey("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
+const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
 
 async function main() {
     try {
         console.log("\n🚀 Starting daily token minting to company account...");
         
         // Set up connection
-        const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+        const connection = new Connection(process.env.RPC_ENDPOINT ||clusterApiUrl("devnet"), "confirmed");
         
         // Load company wallet keypair
-        const companyKeypairPath = "/Users/macbookpro/Solana/keys/wallet.json";
+       
         const companyKeypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(companyKeypairPath, "utf-8")))
+            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
         );
         console.log("\n💼 Company wallet:", companyKeypair.publicKey.toString());
 

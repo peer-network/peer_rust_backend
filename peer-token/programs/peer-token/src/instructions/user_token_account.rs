@@ -9,7 +9,7 @@ use anchor_spl::{
 pub fn handler(ctx: Context<CreateUserTokenAccountArgs>) -> Result<()> {
     msg!("Creating user associated token account for mint: {}", ctx.accounts.peer_mint.key());
     msg!("Owner (user): {}", ctx.accounts.user_wallet.key());
-    msg!("Fee payer (company): {}", ctx.accounts.company_authority.key());
+    msg!("Fee payer (company): {}", ctx.accounts.peer_mint.key());
     Ok(())
 }
 
@@ -19,7 +19,7 @@ pub fn handler(ctx: Context<CreateUserTokenAccountArgs>) -> Result<()> {
 pub struct CreateUserTokenAccountArgs<'info> {
     /// The company wallet that pays for the account creation
     #[account(mut)]
-    pub company_authority: Signer<'info>,
+    pub peer_authority: Signer<'info>,
     
     /// The user wallet address that will own the token account
     /// CHECK: This is just a public key, not an actual account that needs to be checked
@@ -33,8 +33,8 @@ pub struct CreateUserTokenAccountArgs<'info> {
     /// ATA -> mint,wallet address,program id derives the ATA address
     #[account(
         init,
+        payer = peer_authority,
         associated_token::mint = peer_mint,
-        payer = company_authority,
         associated_token::token_program = token_program,
         associated_token::authority = user_wallet,
     )]

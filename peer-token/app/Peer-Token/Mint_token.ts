@@ -9,21 +9,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Set up the program ID (update with your deployed program ID)
-const PROGRAM_ID = new PublicKey("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
+const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
 
 async function main() {
     try {
         console.log("\n🚀 Starting token mint test...");
         
         // Set up connection and wallet
-        const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+        const connection = new Connection(process.env.RPC_ENDPOINT || clusterApiUrl("devnet"), "confirmed");
         
         // Load wallet from keypair file
-        const keypairPath = "/Users/macbookpro/Solana/keys/wallet.json";
+
         const keypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(keypairPath, "utf-8")))
+            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
         );
-        console.log("\n💳 Using wallet:", keypair.publicKey.toString());
+        console.log("\n💳 Using Company wallet:", keypair.publicKey.toString());
 
         // Create provider
         const provider = new anchor.AnchorProvider(
@@ -76,7 +76,7 @@ async function main() {
                 console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
                 console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
             } catch (error) {
-                console.log("❌ Could not fetch detailed mint info:", error.message);
+                console.log("❌ Could not fetch detailed mint info:", error instanceof Error ? error.message : error);
             }
         } else {
             console.log("❓ Mint account does not exist. Creating it now...");
@@ -115,7 +115,7 @@ async function main() {
                     console.log("🔹 Mint Authority:", tokenMintInfo.mintAuthority?.toString());
                     console.log("🔹 Freeze Authority:", tokenMintInfo.freezeAuthority?.toString());
                 } catch (error) {
-                    console.log("❌ Could not fetch detailed mint info:", error.message);
+                    console.log("❌ Could not fetch detailed mint info:", error instanceof Error ? error.message : error);
                 }
             }
         }

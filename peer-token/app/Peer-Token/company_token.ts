@@ -10,26 +10,31 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Set up the program ID
-const PROGRAM_ID = new PublicKey("5wzfDw7tg2z1UKsAmqBMVm43tXTQxd8wVZYBYLHHhotW");
+const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+
 
 async function main() {
     try {
         console.log("\n🚀 Starting company token account creation...");
         
         // Set up connection
-        const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+        // const connection = new Connection(clusterApiUrl("devnet"), "confirmed");÷
+
+
+        const connection = new Connection(process.env.RPC_ENDPOINT || clusterApiUrl("devnet"), "confirmed");
+
         
         // Load company wallet keypair
-        const companyKeypairPath = "/Users/macbookpro/Solana/keys/wallet.json";
-        const companyKeypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(companyKeypairPath, "utf-8")))
+        // const companyKeypairPath = "/Users/macbookpro/Solana/keys/wallet.json";
+        const keypair = Keypair.fromSecretKey(
+            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
         );
-        console.log("\n💼 Company wallet:", companyKeypair.publicKey.toString());
+        console.log("\n💼 Company wallet:", keypair.publicKey.toString());
 
         // Create provider with company wallet
         const provider = new anchor.AnchorProvider(
             connection,
-            new anchor.Wallet(companyKeypair),
+            new anchor.Wallet(keypair),
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
@@ -70,7 +75,7 @@ async function main() {
         // Calculate the company ATA address
         const companyAta = getAssociatedTokenAddressSync(
             mintPda,
-            companyKeypair.publicKey,
+            keypair.publicKey,
             false,
             TOKEN_2022_PROGRAM_ID
         );
@@ -95,14 +100,14 @@ async function main() {
             const companyAtaTx = await program.methods
                 .createAssociatedTokenAccount()
                 .accounts({
-                    signer: companyKeypair.publicKey,
+                    signer: keypair.publicKey,
                     peerMint: mintPda,
                     peerTokenAccount: companyAta,
                     systemProgram: SystemProgram.programId,
                     tokenProgram: TOKEN_2022_PROGRAM_ID,
                     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
                 })
-                .signers([companyKeypair])
+                .signers([keypair])
                 .rpc();
                 
             console.log("✅ Company token account created successfully");
