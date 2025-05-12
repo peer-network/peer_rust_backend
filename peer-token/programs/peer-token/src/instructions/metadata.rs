@@ -2,8 +2,6 @@ use {
     anchor_lang::prelude::*,
     anchor_spl::{
         metadata::{
-            // Create_metadata_accounts_v3, mpl_token_metadata::types::{DataV2, TokenStandard},
-            // CreateMetadataAccountsV3, Metadata,
             mpl_token_metadata::{
                 instructions::CreateV1CpiBuilder,
                 types::{TokenStandard, PrintSupply},
@@ -65,11 +63,8 @@ pub struct CreateMetadataArgs<'info> {
     #[account(mut)]
     pub peer_autority: Signer<'info>, 
     
-    /// Existing Token-2022 mint to attach metadata to
-    /// Must have decimals > 0 to be treated as a fungible token
     #[account(
         mut,
-
         seeds=[b"peer-token"],
         bump,
         constraint = peer_mint.mint_authority.unwrap() == peer_autority.key(),
@@ -98,6 +93,7 @@ pub struct CreateMetadataArgs<'info> {
     pub system_program: Program<'info, System>,
     
     /// CHECK: This is not dangerous because we don't read or write from this account
-    pub sysvar_instructions: UncheckedAccount<'info>,    /// Rent sysvar
+    pub sysvar_instructions: UncheckedAccount<'info>,
+
     pub rent: Sysvar<'info, Rent>,
 } 

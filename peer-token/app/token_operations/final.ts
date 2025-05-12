@@ -119,10 +119,10 @@ async function createUserTokenAccounts(
                         peerAuthority: companyKeypair.publicKey,
                         userWallet: userWallet,
                         peerMint: mintPda,
-                        peerTokenAccount: userTokenAccount,
-                        tokenProgram: TOKEN_2022_PROGRAM_ID,
-                        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                        userTokenAccount: userTokenAccount,
                         systemProgram: SystemProgram.programId,
+                        tokenProgram: TOKEN_2022_PROGRAM_ID,
+                        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
                     })
                     .signers([companyKeypair])
                     .rpc();

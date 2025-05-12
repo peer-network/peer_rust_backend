@@ -5,16 +5,15 @@ use anchor_spl::{
 };
 use std::str::FromStr;
 
-/// Struct to define recipient data
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RecipientData {
-    /// Recipient's wallet address
     pub user_wallet: Pubkey,
-    /// Number of tokens to transfer to this recipient
     pub token_amount: u64,
 }
 
-/// Handler for transferring tokens to a recipient
+/// Need to add the functionality check whether the user has recieved the tokens or not
+
 pub fn transfer_tokens_handler(ctx: Context<TransferTokens>, amount: u64) -> Result<()> {
     // Validate inputs
     require!(amount > 0, ErrorCode::InsufficientAmount);
@@ -40,39 +39,7 @@ pub fn transfer_tokens_handler(ctx: Context<TransferTokens>, amount: u64) -> Res
     Ok(())
 }
     
-    // Get recipient's key for the event
-    // let recipient_key = ctx.accounts.recipient.key();
-    
-    // Emit an event for this individual transfer
-//     emit!(TransferEvent {
-//         recipient: recipient_key,
-//         amount,
-//         timestamp: Clock::get()?.unix_timestamp,
-//     });
-    
-//     Ok(())
- 
-
-// /// Simple initialization struct - just emits an event
-// pub fn initialize_handler(ctx: Context<Initialize>) -> Result<()> {
-//     emit!(InitEvent {
-//         authority: ctx.accounts.authority.key(),
-//         timestamp: Clock::get()?.unix_timestamp,
-//     });
-//     Ok(())
-// }
-
-/// Simple initialization struct
-// #[derive(Accounts)]
-// pub struct Initialize<'info> {
-//     /// The authority (signer) that will perform transfers
-//     #[account(mut)]
-//     pub peer_authority: Signer<'info>,
-    
-//     /// System program
-//     pub system_program: Program<'info, System>,
-// }
-
+   
 /// Accounts required for token transfer
 #[derive(Accounts)]
 pub struct TransferTokens<'info> {
@@ -96,29 +63,13 @@ pub struct TransferTokens<'info> {
     pub user_token_account: InterfaceAccount<'info, TokenAccount>,
     
     pub token_program: Interface<'info, TokenInterface>,
+
     pub associated_token_program: Program<'info, AssociatedToken>,
+    
     pub system_program: Program<'info, System>,
 }
 
-/// Event emitted on initialization
-// #[event]
-// pub struct InitEvent {
-//     /// Authority that will be distributing tokens
-//     pub authority: Pubkey,
-//     /// Creation timestamp
-//     pub timestamp: i64,
-// }
 
-// /// Event emitted on each individual transfer
-// #[event]
-// pub struct TransferEvent {
-//     /// Recipient wallet address
-//     pub recipient: Pubkey,
-//     /// Amount of tokens transferred
-//     pub amount: u64,
-//     /// Timestamp when transferred
-//     pub timestamp: i64,
-// }
 
 /// Custom errors with descriptive messages
 #[error_code]

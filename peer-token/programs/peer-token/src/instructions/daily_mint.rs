@@ -44,7 +44,7 @@ pub fn handler(ctx: Context<DailyMintArgs>, amount: u64) -> Result<()> {
     Ok(())
 }
 
-/// Context for minting tokens
+
 #[derive(Accounts)]
 pub struct DailyMintArgs<'info> {
     /// The token mint
@@ -85,7 +85,6 @@ pub struct LastMint {
     pub last_mint_timestamp: i64,
 }
 
-/// Helper function to get the peer token account address
 
 
 #[error_code]
