@@ -1,0 +1,37 @@
+{
+    "data": {
+      "GetGemsForDay": {
+        "status": "success",
+        "ResponseCode": "Successfully retrieved the Gem amounts for this day",
+        "Date": "2025-04-26",
+        "affectedRows": {
+          "data": [
+            {
+              "totalGems": "1000"
+            },
+            {
+              "userId": "Sol_1",
+              "walletAddress": "FBbv5zeg6NpFmvq5tVbsi977ZnjsvGX2kgkW5BVAuX2b",
+              "gems": "400"
+            },
+            {
+              "userId": "Sol_2",
+              "walletAddress": "9uph5xRg6DSGdMAVD1q6haSCF8HYV5vUN459ZctSz6yw",
+              "gems": "300"
+            },
+            {
+              "userId": "Sol_3",
+              "walletAddress": "D8LGXiqA2P9vV4eJF4bLUSeYxPHYC6r94VozccSvPS6d",
+              "gems": "200"
+            },
+            {
+              "userId": "Sol_4",
+              "walletAddress": "83vbytaC77sPKRHu5EuHFn2By6Kd73zyfcLvfS4GcUuL",
+              "gems": "100"
+            }
+          ]
+        }
+      }
+    }
+  }
+  

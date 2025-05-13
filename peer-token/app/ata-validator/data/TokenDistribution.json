@@ -1,0 +1,36 @@
+{
+  "tokenDistribution": {
+    "date": "2025-04-26",
+    "totalTokens": 5000,
+    "distributions": [
+      {
+        "userId": "Sol_1",
+        "walletAddress": "FBbv5zeg6NpFmvq5tVbsi977ZnjsvGX2kgkW5BVAuX2b",
+        "gems": 400,
+        "tokens": 2000
+      },
+      {
+        "userId": "Sol_2",
+        "walletAddress": "9uph5xRg6DSGdMAVD1q6haSCF8HYV5vUN459ZctSz6yw",
+        "gems": 300,
+        "tokens": 1500
+      },
+      {
+        "userId": "Sol_3",
+        "walletAddress": "D8LGXiqA2P9vV4eJF4bLUSeYxPHYC6r94VozccSvPS6d",
+        "gems": 200,
+        "tokens": 100
+      },
+      {
+        "userId": "Sol_4",
+        "walletAddress": "83vbytaC77sPKRHu5EuHFn2By6Kd73zyfcLvfS4GcUuL",
+        "gems": 100,
+        "tokens": 500
+      }
+    ],
+    "summary": {
+      "totalGems": 1000,
+      "totalTokensDistributed": 5000
+    }
+  }
+}
