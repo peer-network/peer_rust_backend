@@ -14,14 +14,20 @@ import {
 } from "@solana/spl-token";
 import { Metaplex, keypairIdentity } from "@metaplex-foundation/js";
 import * as fs from 'fs';
-import * as path from 'path';
-import * as dotenv from 'dotenv';
+import path from 'path';
+ import dotenv from 'dotenv';
+ import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utilss";
+ import { createConfig } from "../../utils/config/helper";
 
-dotenv.config();
+ dotenv.config( { path:path.resolve(__dirname, "../../.env")});
 
 // Program and Token Constants
-const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!)
+const program_id = getPublicKey("PROGRAM_ID");
 const TOKEN_METADATA_PROGRAM_ID = new PublicKey(process.env.TOKEN_METADATA_PROGRAM_ID!);
+const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+
+ const idl = getIdl();
+
 
 async function main() {
     try {
@@ -39,31 +45,31 @@ async function main() {
         console.log("Token URI:", tokenUri);
         
         // Set up connection
-        const connection = new Connection(process.env.RPC_ENDPOINT || clusterApiUrl("devnet"), "confirmed");
+        const connection = getSolanaConnection();
         
         // Load wallet keypair
-        const keypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
-        );
-        console.log("\n💳 Using Company wallet:", keypair.publicKey.toString());
+        // const keypair = Keypair.fromSecretKey(
+        //     Buffer.from(JSON.parse(fs.readFileSync(companyWallet.publicKey.toBase58(), "utf-8")))
+        // );
+        console.log("\n💳 Using Company wallet:", companyWallet.publicKey.toString());
 
         // Setup providers and programs
         const provider = new anchor.AnchorProvider(
             connection,
-            new anchor.Wallet(keypair),
+            new anchor.Wallet(companyWallet),
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
 
         // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
-        const idl = JSON.parse(idlFile);
-        const program = new anchor.Program(idl, PROGRAM_ID, provider);
+        // const idlFile = fs.readFileSync(getIdl(), 'utf8');
+        // const idl = JSON.parse(idlFile); 
+        const program = new anchor.Program(idl, program_id, provider);
 
         // Derive PDAs
         const [mintPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("peer-token")],
-            PROGRAM_ID
+            program_id
         );
         console.log("\n🔑 PDAs and Accounts");
         console.log("-------------------");
@@ -71,7 +77,7 @@ async function main() {
 
         // Setup Metaplex
         const metaplex = Metaplex.make(connection)
-            .use(keypairIdentity(keypair));
+            .use(keypairIdentity(companyWallet));
 
         // 1. MINT TOKEN
         if (operation === 'all' || operation === 'mint') {
@@ -89,13 +95,13 @@ async function main() {
                     const tx = await program.methods
                         .createToken()
                         .accounts({
-                            peerAuthority: keypair.publicKey,
+                            peerAuthority: companyWallet.publicKey,
                             peerMint: mintPda,
                             systemProgram: SystemProgram.programId,
                             tokenProgram: TOKEN_2022_PROGRAM_ID,
                             rent: anchor.web3.SYSVAR_RENT_PUBKEY
                         })
-                        .signers([keypair])
+                        .signers([companyWallet])
                         .rpc();
 
                     console.log("✅ Token mint created successfully");
@@ -115,7 +121,7 @@ async function main() {
 
             const companyAta = getAssociatedTokenAddressSync(
                 mintPda,
-                keypair.publicKey,
+                companyWallet.publicKey,
                 false,
                 TOKEN_2022_PROGRAM_ID
             );
@@ -132,14 +138,14 @@ async function main() {
                     const tx = await program.methods
                         .createAssociatedTokenAccount()
                         .accounts({
-                            signer: keypair.publicKey,
+                            signer: companyWallet.publicKey,
                             peerMint: mintPda,
                             peerTokenAccount: companyAta,
                             systemProgram: SystemProgram.programId,
                             tokenProgram: TOKEN_2022_PROGRAM_ID,
                             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
                         })
-                        .signers([keypair])
+                        .signers([companyWallet])
                         .rpc();
 
                     console.log("✅ Company token account created successfully");
@@ -201,7 +207,7 @@ async function main() {
                             tokenUri
                         )
                         .accounts({
-                            peerAuthority: keypair.publicKey,
+                            peerAuthority: companyWallet.publicKey,
                             peerMint: mintPda,
                             metadataAccount: metadataAccount,
                             tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
@@ -210,7 +216,7 @@ async function main() {
                             sysvarInstructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
                             rent: anchor.web3.SYSVAR_RENT_PUBKEY,
                         })
-                        .signers([keypair])
+                        .signers([companyWallet])
                         .rpc();
 
                     console.log("✅ Token metadata created successfully");
@@ -232,7 +238,7 @@ async function main() {
         console.log("1. Mint Account:", mintPda.toString());
         console.log("2. Company Token Account:", getAssociatedTokenAddressSync(
             mintPda,
-            keypair.publicKey,
+            companyWallet.publicKey,
             false,
             TOKEN_2022_PROGRAM_ID
         ).toString());

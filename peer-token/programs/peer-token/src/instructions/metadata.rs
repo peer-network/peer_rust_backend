@@ -35,9 +35,9 @@ pub fn handler(
     CreateV1CpiBuilder::new(&ctx.accounts.token_metadata_program)
         .metadata(&ctx.accounts.metadata_account)
         .mint(&ctx.accounts.peer_mint.to_account_info(), false) // Don't require mint to be signer
-        .authority(&ctx.accounts.peer_autority)
-        .payer(&ctx.accounts.peer_autority)
-        .update_authority(&ctx.accounts.peer_autority, true)
+        .authority(&ctx.accounts.peer_authority)
+        .payer(&ctx.accounts.peer_authority)
+        .update_authority(&ctx.accounts.peer_authority, true)
         .system_program(&ctx.accounts.system_program)
         .sysvar_instructions(&ctx.accounts.sysvar_instructions)
         .spl_token_program(&ctx.accounts.token_program.to_account_info())
@@ -59,15 +59,15 @@ pub fn handler(
 #[derive(Accounts)]
 #[instruction(token_decimals: u8, token_name: String, token_symbol: String, token_uri: String)]
 pub struct CreateMetadataArgs<'info> {
-    /// The fee peer_autority and mint authority
+    /// The fee peer_authority and mint authority
     #[account(mut)]
-    pub peer_autority: Signer<'info>, 
+    pub peer_authority: Signer<'info>, 
     
     #[account(
         mut,
         seeds=[b"peer-token"],
         bump,
-        constraint = peer_mint.mint_authority.unwrap() == peer_autority.key(),
+        constraint = peer_mint.mint_authority.unwrap() == peer_authority.key(),
         constraint = peer_mint.to_account_info().owner == &token_program.key(),
         constraint = peer_mint.decimals > 0
     )]

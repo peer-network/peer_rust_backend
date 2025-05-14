@@ -46,7 +46,7 @@ async function main() {
         // Derive the token mint PDA
         const [mintPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("peer-token")],
-            PROGRAM_ID
+            (PROGRAM_ID)
         );
         console.log("\n🔹 Mint PDA:", mintPda.toString());
 

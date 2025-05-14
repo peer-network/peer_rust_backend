@@ -11,14 +11,20 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { BN } from "bn.js";
-import * as dotenv from 'dotenv';
+// import * as dotenv from 'dotenv';
+import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl, getTokenDecimals, getDailyMintAmount } from "../../utilss";
 
 
 // Load environment variables
-dotenv.config();
+// dotenv.config();
+const connection = getSolanaConnection();
+const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+const idl = getIdl();
+const token_decimals = getTokenDecimals("TOKEN_DECIMALS");
+const daily_mint_amount = getDailyMintAmount("DAILY_MINT_AMOUNT");
 
 // Set up the program ID from env
-const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+const program_id = getPublicKey("PROGRAM_ID");
 
 interface TokenDistribution {
     tokenDistribution: {
@@ -52,25 +58,25 @@ async function mintToCompany(
             Buffer.from("daily-mint"),
             companyKeypair.publicKey.toBuffer()
         ],
-        PROGRAM_ID
+        program_id
     );
     console.log("🔹 Last Mint PDA:", lastMintPda.toString());
 
     // Amount to mint (5000 tokens with 9 decimals)
-    const amount = Number(process.env.DAILY_MINT_AMOUNT!) * (10 ** Number(process.env.TOKEN_DECIMALS!));
+    const amount = daily_mint_amount * (10 ** token_decimals);
 
     try {
         const tx = await program.methods
             .dailyMint(new BN(amount))
             .accounts({
-                peerAuthority: companyKeypair.publicKey,
+                peerAuthority: companyWallet.publicKey,
                 peerMint: mintPda,
                 peerTokenAccount: companyTokenAccount,
                 lastMint: lastMintPda,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
                 systemProgram: SystemProgram.programId
             })
-            .signers([companyKeypair])
+            .signers([companyWallet])
             .rpc();
             
         console.log("✅ Daily mint successful");
@@ -116,7 +122,7 @@ async function createUserTokenAccounts(
                 const tx = await program.methods
                     .createUserTokenAccount()
                     .accounts({
-                        peerAuthority: companyKeypair.publicKey,
+                        peerAuthority: companyWallet.publicKey,
                         userWallet: userWallet,
                         peerMint: mintPda,
                         userTokenAccount: userTokenAccount,
@@ -124,7 +130,7 @@ async function createUserTokenAccounts(
                         tokenProgram: TOKEN_2022_PROGRAM_ID,
                         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
                     })
-                    .signers([companyKeypair])
+                    .signers([companyWallet])
                     .rpc();
 
                 console.log("✅ Token account created");
@@ -178,7 +184,7 @@ async function distributeTokens(
             const tx = await program.methods
                 .transferTokens(new BN(transferAmount))
                 .accounts({
-                    peerAuthority: companyKeypair.publicKey,
+                    peerAuthority: companyWallet.publicKey,
                     userWallet: userWallet,
                     peerMint: mintPda,
                     peerTokenAccount: companyTokenAccount,
@@ -187,7 +193,7 @@ async function distributeTokens(
                     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                     systemProgram: SystemProgram.programId,
                 })
-                .signers([companyKeypair])
+                .signers([companyWallet])
                 .rpc();
 
             console.log("✅ Transfer successful!");
@@ -220,48 +226,49 @@ async function main() {
         console.log("\n🚀 Starting Complete Token Distribution Process");
         
         // Set up connection
-        const connection = new Connection(process.env.RPC_ENDPOINT || clusterApiUrl("devnet"), "confirmed");
+        const connection = getSolanaConnection();
         
         // Load company wallet keypair
-        const companyKeypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
-        );
-        console.log("\n💼 Company wallet:", companyKeypair.publicKey.toString());
+        // const companyKeypair = Keypair.fromSecretKey(
+        //     Buffer.from(JSON.parse(fs.readFileSync(companyWallet.publicKey.toBase58(), "utf-8")))
+        // );
+        console.log("\n💼 Company wallet:", companyWallet.publicKey.toString());
 
         // Create provider
         const provider = new anchor.AnchorProvider(
             connection,
-            new anchor.Wallet(companyKeypair),
+            new anchor.Wallet(companyWallet),
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
 
         // Load the IDL
         // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
-        const idl = JSON.parse(idlFile);
+        // const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
+        // const idl = JSON.parse(idlFile);
 
         // Create program interface
-        const program = new anchor.Program(idl, PROGRAM_ID, provider);
+        const program = new anchor.Program(idl, program_id, provider);
 
         // Derive the token mint PDA
         const [mintPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("peer-token")],
-            PROGRAM_ID
+            program_id
         );
         console.log("\n🔹 Mint PDA:", mintPda.toString());
 
         // Get company token account
         const companyTokenAccount = getAssociatedTokenAddressSync(
             mintPda,
-            companyKeypair.publicKey,
+            companyWallet.publicKey,
             false,
             TOKEN_2022_PROGRAM_ID
         );
         console.log("🔹 Company Token Account:", companyTokenAccount.toString());
 
         // Load TokenDistribution.json
-        const distributionPath = path.join(process.cwd(), "app", "ata-validator", "data", "TokenDistribution.json");
+        // const distributionPath = path.join(process.cwd(), "app", "ata-validator", "data", "TokenDistribution.json");
+        const distributionPath = path.join(process.cwd(), "peer-token", "app", "ata-validator", "data", "TokenDistribution.json");
         console.log("\n🔍 Loading TokenDistribution.json from:", distributionPath);
         
         if (!fs.existsSync(distributionPath)) {
@@ -272,9 +279,9 @@ async function main() {
         console.log(`📊 Total distributions to process: ${distributionData.tokenDistribution.distributions.length}`);
 
         // Execute all steps in sequence
-        await mintToCompany(program, connection, companyKeypair, mintPda, companyTokenAccount);
-        await createUserTokenAccounts(program, connection, companyKeypair, mintPda, distributionData.tokenDistribution.distributions);
-        await distributeTokens(program, connection, companyKeypair, mintPda, companyTokenAccount, distributionData.tokenDistribution.distributions);
+        await mintToCompany(program, connection, companyWallet, mintPda, companyTokenAccount);
+        await createUserTokenAccounts(program, connection, companyWallet, mintPda, distributionData.tokenDistribution.distributions);
+        await distributeTokens(program, connection, companyWallet, mintPda, companyTokenAccount, distributionData.tokenDistribution.distributions);
 
         console.log("\n📝 SUMMARY:");
         console.log(`Total distributions completed: ${distributionData.tokenDistribution.distributions.length}`);

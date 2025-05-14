@@ -34,7 +34,7 @@ export interface GemData {
     };
 }
 
-export async function main(gemsData : GemData) {
+export async function main(gemsData: GemData) {
     try {
         console.log("\n🚀 Starting user token account processing...");
         
