@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Set up the program ID
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
@@ -85,18 +85,18 @@ export async function main(gemsData: GemData) {
         console.log("🔹 Mint Account Owner:", mintAccountInfo.owner.toString());
 
         // Load Gemdata.json
-        const gemDataPath = path.join(process.cwd(), "app", "ata-validator", "data", "Gemdata.json");
-        console.log("\n🔍 Looking for Gemdata.json at:", gemDataPath);
+        // const gemDataPath = path.join(process.cwd(), "app", "ata-validator", "data", "Gemdata.json");
+        // console.log("\n🔍 Looking for Gemdata.json at:", gemDataPath);
         
-        if (!fs.existsSync(gemDataPath)) {
-            throw new Error(`❌ Gemdata.json not found at: ${gemDataPath}\nPlease ensure the file exists at this location.`);
-        }
+        // if (!fs.existsSync(gemDataPath)) {
+        //     throw new Error(`❌ Gemdata.json not found at: ${gemDataPath}\nPlease ensure the file exists at this location.`);
+        // }
 
         let gemData: GemData;
         try {
-            const fileContent = fs.readFileSync(gemDataPath, 'utf8');
-            gemData = JSON.parse(fileContent);
-            
+            // const fileContent = fs.readFileSync(gemDataPath, 'utf8');
+            // gemData = JSON.parse(fileContent);
+            gemData = gemsData
             if (!gemData.data?.GetGemsForDay?.affectedRows?.data) {
                 throw new Error("❌ Invalid Gemdata.json format: missing required data structure");
             }
@@ -195,7 +195,5 @@ export async function main(gemsData: GemData) {
         }
     }
 }
-
-
 
 // main().then(() => console.log("\n✨ Done")); 
