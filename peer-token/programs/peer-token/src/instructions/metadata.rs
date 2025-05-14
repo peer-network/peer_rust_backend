@@ -11,6 +11,7 @@ use {
         token_interface::{Mint, TokenInterface},
     },
 };
+use crate::error::PeerTokenError;
 
 pub fn handler(
     ctx: Context<CreateMetadataArgs>,
@@ -19,10 +20,18 @@ pub fn handler(
     token_symbol: String,
     token_uri: String,
 ) -> Result<()> {
+    // Validate token decimals
+    require!(token_decimals > 0, PeerTokenError::InvalidTokenDecimals);
+    
+    // Validate token name
+    require!(!token_name.is_empty(), PeerTokenError::InvalidTokenMetadata);
+    
+    // Validate token symbol
+    require!(!token_symbol.is_empty(), PeerTokenError::InvalidTokenMetadata);
+    
     msg!("Creating metadata for FUNGIBLE Token-2022 token: {}", token_name);
     msg!("Metadata account address: {}", &ctx.accounts.metadata_account.key());
     msg!("Token decimals: {}", token_decimals);
-
 
     // Use the mint_account as a signer using a PDA with seeds
     // This is required by the Metaplex metadata API
@@ -38,6 +47,9 @@ pub fn handler(
         .authority(&ctx.accounts.peer_authority)
         .payer(&ctx.accounts.peer_authority)
         .update_authority(&ctx.accounts.peer_authority, true)
+        .authority(&ctx.accounts.peer_authority)
+        .payer(&ctx.accounts.peer_authority)
+        .update_authority(&ctx.accounts.peer_authority, true)
         .system_program(&ctx.accounts.system_program)
         .sysvar_instructions(&ctx.accounts.sysvar_instructions)
         .spl_token_program(&ctx.accounts.token_program.to_account_info())
@@ -48,7 +60,8 @@ pub fn handler(
         .symbol(token_symbol)
         .uri(token_uri)
         .decimals(token_decimals)
-        .invoke_signed(mint_signer)?; // Use invoke_signed instead of invoke
+        .invoke_signed(mint_signer)
+        .map_err(|_| PeerTokenError::MetadataCreationFailed)?;
 
     msg!("Metaplex metadata created successfully for FUNGIBLE Token-2022 token");
     Ok(())
@@ -67,9 +80,9 @@ pub struct CreateMetadataArgs<'info> {
         mut,
         seeds=[b"peer-token"],
         bump,
-        constraint = peer_mint.mint_authority.unwrap() == peer_authority.key(),
-        constraint = peer_mint.to_account_info().owner == &token_program.key(),
-        constraint = peer_mint.decimals > 0
+        constraint = peer_mint.mint_authority.unwrap() == peer_authority.key() @ PeerTokenError::InvalidMintAuthority,
+        constraint = peer_mint.to_account_info().owner == &token_program.key() @ PeerTokenError::InvalidMint,
+        constraint = peer_mint.decimals > 0 @ PeerTokenError::InvalidTokenDecimals
     )]
     pub peer_mint: InterfaceAccount<'info, Mint>,
     

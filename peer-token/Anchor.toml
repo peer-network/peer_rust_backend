@@ -8,7 +8,7 @@ skip-lint = false
 
 
 
-peer_token = "HUSw3o6iqPoN6CdQ3mdEqv6BWpYsGSw57NqFnabxBBXW"
+peer_token = "HXoJTgD7WxQ9P4Y1dyg99agXHoMnr9S9iJ216Rky1hAY"
 
 
 [registry]
@@ -16,7 +16,7 @@ url = "https://api.apr.dev/"
 
 [provider]
 cluster = "https://api.devnet.solana.com"
-wallet = "~/peer_rust_backend/peer-token/keys/Wallets/Company.json"
+wallet = "/Users/macbookpro/Solana/keys/wallet.json"
 
 
 [scripts]

@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 
 pub mod instructions;
+pub mod error;
 
 pub use instructions::associated_account::*;
 pub use instructions::mint_token::*;
@@ -9,9 +10,10 @@ pub use instructions::metadata::*;
 pub use instructions::user_token_account::*;
 pub use instructions::daily_mint::*;
 pub use instructions::airdrop::*;
+pub use error::*;
 
 
-declare_id!("HUSw3o6iqPoN6CdQ3mdEqv6BWpYsGSw57NqFnabxBBXW");
+declare_id!("HXoJTgD7WxQ9P4Y1dyg99agXHoMnr9S9iJ216Rky1hAY");
 
 
 #[program]
