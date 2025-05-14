@@ -16,7 +16,7 @@ dotenv.config();
 // Set up the program ID
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
 
-interface GemData {
+export interface GemData {
     data: {
         GetGemsForDay: {
             status: string;
@@ -34,7 +34,7 @@ interface GemData {
     };
 }
 
-async function main() {
+export async function main(gemsData: GemData) {
     try {
         console.log("\n🚀 Starting user token account processing...");
         
@@ -196,4 +196,6 @@ async function main() {
     }
 }
 
-main().then(() => console.log("\n✨ Done")); 
+
+
+// main().then(() => console.log("\n✨ Done")); 

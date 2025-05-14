@@ -9,4 +9,6 @@ test-ledger
 env 
 .ata-validator
 keys
+utils
+.env
 
