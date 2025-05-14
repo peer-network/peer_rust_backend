@@ -26,9 +26,9 @@ export interface GemData {
                 data: Array<{
                     userId?: string;
                     walletAddress?: string;
-                    gems?: string;
-                    totalGems?: string;
+                    tokens?: string;
                 }>;
+                totalTokens?: string;
             };
         };
     };
@@ -111,7 +111,7 @@ export async function main(gemsData: GemData) {
                 console.log("\n====================================");
                 console.log(`👤 Processing User ID: ${user.userId}`);
                 console.log(`🔑 Wallet Address: ${user.walletAddress}`);
-                console.log(`💎 Gems: ${user.gems || '0'}`);
+                console.log(`💎 Gems: ${user.tokens || '0'}`);
                 
                 const userWallet = new PublicKey(user.walletAddress);
                 
