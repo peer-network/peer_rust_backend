@@ -10,5 +10,6 @@ env
 .ata-validator
 keys
 utils
-.env
+*.env
+
 
