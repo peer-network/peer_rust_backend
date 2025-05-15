@@ -24,23 +24,7 @@ const connection = getSolanaConnection();
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const idl = getIdl();
 
-// export interface TokenDistribution  {
-//     data: {
-//         GetGemsForDay: {
-//             status: string;
-//             ResponseCode: string;
-//             Date: string;
-//             affectedRows: {
-//                 data: Array<{
-//                     userId?: string;
-//                     walletAddress?: string;
-//                     tokens?: string;
-//                 }>;
-//                 totalTokens?: string;
-//             };
-//         };
-//     };
-// }
+
 export async function main(tokendata: TokenDistribution) {
     try {
         console.log("\n🚀 Starting token airdrop process...");
