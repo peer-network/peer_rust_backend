@@ -10,11 +10,16 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import { getEnv, getIdl, getKeypairFromEnvPath } from "../../utilss";
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+const idl=getIdl()
+
 // Set up the program ID
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+
+const companyKeypair= getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 
 export interface GemData {
     data: {
@@ -42,9 +47,9 @@ export async function main(gemsData: GemData) {
         const connection = new Connection(process.env.RPC_ENDPOINT! || clusterApiUrl("devnet"), "confirmed");
         
         // Load company wallet keypair (to pay for the account creation)
-        const companyKeypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
-        );
+        // const companyKeypair = Keypair.fromSecretKey(
+        //     Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
+        // );
         console.log("\n💼 Company wallet (fee payer):", companyKeypair.publicKey.toString());
 
         // Create provider with company wallet
@@ -57,8 +62,8 @@ export async function main(gemsData: GemData) {
 
         // Load the IDL
         // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
-        const idl = JSON.parse(idlFile);
+        // const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
+        // const idl = JSON.parse(idlFile);
 
         // Create program interface
         const program = new anchor.Program(idl, PROGRAM_ID, provider);
