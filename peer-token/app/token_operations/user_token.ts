@@ -10,15 +10,21 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+
 import { tokenDistribution } from "../mockdata/distribution";
 import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utilss";
+
+
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+
 
 // Set up the program ID
 const program_id = getPublicKey("PROGRAM_ID");
 const connection = getSolanaConnection();
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const idl = getIdl();  
+
 
 export interface TokenDistribution  {
     data: {
@@ -44,7 +50,10 @@ export async function main() {
         console.log("\n🚀 Starting user token account processing...");
         
         
+
         console.log("\n💼 Company wallet (fee payer):", companyWallet.publicKey.toString());
+
+
 
         // Create provider with company wallet
         const provider = new anchor.AnchorProvider(
@@ -54,7 +63,7 @@ export async function main() {
         );
         anchor.setProvider(provider);
 
-       
+
         // Create program interface
         const program = new anchor.Program(idl, program_id, provider);
 

@@ -10,13 +10,47 @@ import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utilss";
 
+import {MintResponse, Status} from "../../../../solana_client/client/handlers/solanaProvider/SolanaProviderResponse";
+
+class MintResponseImpl implements MintResponse {
+    constructor(
+        public code: string,
+        public message: string,
+        public status: Status,
+        public data: any,
+    ) {}
+
+    static success(): MintResponseImpl {
+        return new MintResponseImpl(
+            "",
+            "",
+            Status.success,
+            []
+        )
+    }
+
+    static error(code : string, message: string): MintResponseImpl {
+        return new MintResponseImpl(
+            code,
+            message,
+            Status.error,
+            []
+        )
+    }
+}
+
+
 // Set up the program ID
 const program_id = getPublicKey("PROGRAM_ID");
 const connection = getSolanaConnection();
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const idl = getIdl();
 
-async function mintToCompanyDaily() {
+
+
+
+export async function mint(): Promise<MintResponseImpl> {
+
     try {
         console.log("\n🚀 Starting daily token minting to company account...");
         
@@ -116,6 +150,7 @@ async function mintToCompanyDaily() {
             // Verify the mint
             const tokenAccountInfo = await connection.getTokenAccountBalance(companyTokenAccount);
             console.log("\n💰 Company Token Balance:", tokenAccountInfo.value.uiAmount);
+            return MintResponseImpl.success()
         } catch (error) {
             // console.error("❌ Error during daily mint:", error);
             if (error instanceof Error) {
@@ -123,18 +158,32 @@ async function mintToCompanyDaily() {
                 console.error("Error message:", error.message);
                 if (error.message.includes("AlreadyMintedToday")) {
                     console.log("ℹ️ Tokens have already been minted today. Try again tomorrow.");
+                    return MintResponseImpl.error(
+                       "40000",
+                        "Tokens have already been minted today. Try again tomorrow."
+                )
                 }
+                return MintResponseImpl.error(
+                    "40000",
+                    error.name + ": " + error.message
+                )
             }
         }
 
-    } catch (error) {
+    } catch (e) {
+        const error = e as Error
         console.error("\n❌ ERROR:", error);
         if (error instanceof Error) {
             console.error("Error message:", error.message);
             console.error("Error stack:", error.stack);
         }
+        return MintResponseImpl.error(
+            "6000",
+            error.name + ": " + error.message
+        )
     }
+    return MintResponseImpl.error(
+            "60000",
+            "Undefined error"
+    )
 }
-
-
-mintToCompanyDaily().then(() => console.log("\n✨ Done")); 
