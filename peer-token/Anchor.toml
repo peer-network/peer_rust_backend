@@ -1,0 +1,24 @@
+[toolchain]
+rust = "1.85.1"
+solana = "1.18.25"
+
+[features]
+seeds = false
+skip-lint = false
+
+
+
+peer_token = "H6XWocY2ZXxZS8iLbo8iG7nhv34q2mB97DRsmgdRJnG1"
+
+
+
+[registry]
+url = "https://api.apr.dev/"
+
+[provider]
+cluster = "https://api.devnet.solana.com"
+wallet = "~/peer_rust_backend/peer-token/keys/Wallets/Company.json"
+
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
