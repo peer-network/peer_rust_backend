@@ -1,6 +1,5 @@
 use anchor_lang::error_code;
-use anchor_lang::prelude::*;
-use solana_program::program_error::ProgramError;
+use anchor_lang::solana_program::program_error::ProgramError;
 
 /// Error codes specific to the Peer Token program
 /// Starting at the standard offset of 6000 for user-defined errors
