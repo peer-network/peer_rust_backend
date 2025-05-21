@@ -15,9 +15,14 @@ import {
 import { Metaplex, keypairIdentity } from "@metaplex-foundation/js";
 import * as fs from 'fs';
 import path from 'path';
+<<<<<<< HEAD
 import dotenv from 'dotenv';
 import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utilss";
 import { ErrorHandler, ErrorFactory, ErrorCode } from "../errors";
+=======
+ import dotenv from 'dotenv';
+ import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utilss";
+>>>>>>> development
 
 dotenv.config( { path:path.resolve(__dirname, "../../.env")});
 

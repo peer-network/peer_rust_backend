@@ -8,7 +8,12 @@ skip-lint = false
 
 
 
+<<<<<<< HEAD
 peer_token = "HXoJTgD7WxQ9P4Y1dyg99agXHoMnr9S9iJ216Rky1hAY"
+=======
+peer_token = "6DzkgjSCmyaQxaWRgtigzCP4D3MFAVqvDYoij12fBoqC"
+
+>>>>>>> development
 
 
 [registry]
@@ -16,7 +21,11 @@ url = "https://api.apr.dev/"
 
 [provider]
 cluster = "https://api.devnet.solana.com"
+<<<<<<< HEAD
 wallet = "/Users/macbookpro/Solana/keys/wallet.json"
+=======
+wallet = "keys/Wallets/Company.json"
+>>>>>>> development
 
 
 [scripts]

@@ -13,14 +13,18 @@ pub use instructions::airdrop::*;
 pub use error::*;
 
 
+<<<<<<< HEAD
 declare_id!("HXoJTgD7WxQ9P4Y1dyg99agXHoMnr9S9iJ216Rky1hAY");
+=======
+declare_id!("6DzkgjSCmyaQxaWRgtigzCP4D3MFAVqvDYoij12fBoqC");
+>>>>>>> development
 
 
 #[program]
 pub mod peer_token {
     use super::*;
     
-
+    //token creation functions
     pub fn create_token(ctx: Context<MintTokenArgs>) -> Result<()> {
         instructions::mint_token::handler(ctx)
     }
