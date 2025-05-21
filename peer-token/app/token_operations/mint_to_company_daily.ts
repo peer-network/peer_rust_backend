@@ -187,3 +187,5 @@ export async function mint(): Promise<MintResponseImpl> {
             "Undefined error"
     )
 }
+
+// mint();

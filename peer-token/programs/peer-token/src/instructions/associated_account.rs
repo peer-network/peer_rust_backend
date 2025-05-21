@@ -17,8 +17,9 @@ pub struct CreateTokenAtaArgs<'info> {
     #[account(mut)]
     pub peer_authority: Signer<'info>,
     
-    pub peer_mint: InterfaceAccount<'info, Mint>,
-    
+    pub peer_mint: InterfaceAccount<'info, Mint>, // INTERFACE STATE = Mint, Tokle 
+    // it can be any kind of mint 
+
    
     #[account(
         init,
@@ -32,8 +33,8 @@ pub struct CreateTokenAtaArgs<'info> {
   
     pub system_program: Program<'info, System>,
     
-    pub token_program: Interface<'info, TokenInterface>,
+    pub token_program: Interface<'info, TokenInterface>,  //wrapper for token program
     
     /// Associated token program for creating ATAs
-    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub associated_token_program: Program<'info, AssociatedToken>, //Pda generates the token account address
 } 

@@ -58,18 +58,19 @@ pub fn handler(
 /// Arguments for creating Metaplex metadata for a Token-2022 fungible token
 #[derive(Accounts)]
 #[instruction(token_decimals: u8, token_name: String, token_symbol: String, token_uri: String)]
-pub struct CreateMetadataArgs<'info> {
+pub struct CreateMetadataArgs<'info> {   //Struct for the accounts
     /// The fee peer_authority and mint authority
     #[account(mut)]
     pub peer_authority: Signer<'info>, 
+    
     
     #[account(
         mut,
         seeds=[b"peer-token"],
         bump,
-        constraint = peer_mint.mint_authority.unwrap() == peer_authority.key(),
-        constraint = peer_mint.to_account_info().owner == &token_program.key(),
-        constraint = peer_mint.decimals > 0
+        constraint = peer_mint.mint_authority.unwrap() == peer_authority.key(), 
+        constraint = peer_mint.to_account_info().owner == &token_program.key(), //
+        constraint = peer_mint.decimals > 0  //Not required 
     )]
     pub peer_mint: InterfaceAccount<'info, Mint>,
     
@@ -90,10 +91,10 @@ pub struct CreateMetadataArgs<'info> {
     pub token_program: Interface<'info, TokenInterface>,
     
     /// System program
-    pub system_program: Program<'info, System>,
+    pub system_program: Program<'info, System>,  //
     
     /// CHECK: This is not dangerous because we don't read or write from this account
-    pub sysvar_instructions: UncheckedAccount<'info>,
+    pub sysvar_instructions: UncheckedAccount<'info>, // 
 
     pub rent: Sysvar<'info, Rent>,
 } 
