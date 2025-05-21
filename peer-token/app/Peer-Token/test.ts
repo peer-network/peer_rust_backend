@@ -120,19 +120,9 @@ async function main() {
                     console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${tx}?cluster=devnet`);
 
                     // Verify mint creation
-                    const mintInfo = await getMint(
-                        connection,
-                        mintPda,
-                        "confirmed",
-                        TOKEN_2022_PROGRAM_ID
-                    );
                     console.log("\n🔍 Verifying mint creation...");
+                    const mintInfo = await connection.getAccountInfo(mintPda);
                     console.log("✅ Mint Account Created:", mintInfo !== null);
-
-                    console.log("🔹 Token Supply:", mintInfo.supply.toString());
-                    console.log("🔹 Decimals:", mintInfo.decimals);
-                    console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
-                    console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
                 } catch (error) {
                     console.error("❌ Error creating mint:", error);
                     return;

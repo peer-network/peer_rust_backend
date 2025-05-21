@@ -13,6 +13,7 @@ import * as path from 'path';
 import { BN } from "bn.js";
 // import * as dotenv from 'dotenv';
 import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl, getTokenDecimals, getDailyMintAmount } from "../../utilss";
+import { tokenDistribution } from "../mockdata/distribution";
 
 
 // Load environment variables
@@ -26,19 +27,20 @@ const daily_mint_amount = getDailyMintAmount("DAILY_MINT_AMOUNT");
 // Set up the program ID from env
 const program_id = getPublicKey("PROGRAM_ID");
 
-interface TokenDistribution {
-    tokenDistribution: {
-        date: string;
-        totalTokens: number;
-        distributions: Array<{
-            userId: string;
-            walletAddress: string;
-            gems: number;
-            tokens: number;
-        }>;
-        summary: {
-            totalGems: number;
-            totalTokensDistributed: number;
+export interface TokenDistribution  {
+    data: {
+        GetGemsForDay: {
+            status: string;
+            ResponseCode: string;
+            Date: string;
+            affectedRows: {
+                data: Array<{
+                    userId?: string;
+                    walletAddress?: string;
+                    tokens?: string;
+                }>;
+                totalTokens?: string;
+            };
         };
     };
 }
@@ -69,14 +71,14 @@ async function mintToCompany(
         const tx = await program.methods
             .dailyMint(new BN(amount))
             .accounts({
-                peerAuthority: companyWallet.publicKey,
+                peerAuthority: companyKeypair.publicKey,
                 peerMint: mintPda,
                 peerTokenAccount: companyTokenAccount,
                 lastMint: lastMintPda,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
                 systemProgram: SystemProgram.programId
             })
-            .signers([companyWallet])
+            .signers([companyKeypair])
             .rpc();
             
         console.log("✅ Daily mint successful");
@@ -100,11 +102,17 @@ async function createUserTokenAccounts(
     connection: Connection,
     companyKeypair: Keypair,
     mintPda: PublicKey,
-    distributions: TokenDistribution["tokenDistribution"]["distributions"]
+    TokenDistribution: TokenDistribution,
+    // distributions: TokenDistribution["data"]["GetGemsForDay"]["affectedRows"]["data"]
 ): Promise<void> {
     console.log("\n🚀 Step 2: Creating User Token Accounts");
 
-    for (const distribution of distributions) {
+     
+    for (const tokenDistribution of  ) {
+        if (!distribution.walletAddress) {
+            console.error(`❌ User ${distribution.userId} has no wallet address`);
+            continue;
+        }
         const userWallet = new PublicKey(distribution.walletAddress);
         console.log(`\n👤 Processing User: ${distribution.userId}`);
         console.log(`🔑 Wallet: ${distribution.walletAddress}`);
@@ -122,7 +130,7 @@ async function createUserTokenAccounts(
                 const tx = await program.methods
                     .createUserTokenAccount()
                     .accounts({
-                        peerAuthority: companyWallet.publicKey,
+                        peerAuthority: companyKeypair.publicKey,
                         userWallet: userWallet,
                         peerMint: mintPda,
                         userTokenAccount: userTokenAccount,
@@ -130,7 +138,7 @@ async function createUserTokenAccounts(
                         tokenProgram: TOKEN_2022_PROGRAM_ID,
                         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
                     })
-                    .signers([companyWallet])
+                    .signers([companyKeypair])
                     .rpc();
 
                 console.log("✅ Token account created");
@@ -151,7 +159,7 @@ async function distributeTokens(
     companyKeypair: Keypair,
     mintPda: PublicKey,
     companyTokenAccount: PublicKey,
-    distributions: TokenDistribution["tokenDistribution"]["distributions"]
+    distributions: TokenDistribution["data"]["GetGemsForDay"]["affectedRows"]["data"]
 ): Promise<void> {
     console.log("\n🚀 Step 3: Distributing Tokens");
 
@@ -169,7 +177,7 @@ async function distributeTokens(
         console.log(`💰 Tokens to send: ${distribution.tokens}`);
 
         try {
-            const userWallet = new PublicKey(distribution.walletAddress);
+            const userWallet = new PublicKey(distribution.walletAddress!);
             const userTokenAccount = getAssociatedTokenAddressSync(
                 mintPda,
                 userWallet,
@@ -179,7 +187,7 @@ async function distributeTokens(
             console.log("🔹 User Token Account:", userTokenAccount.toString());
 
             // Convert token amount to proper decimal representation
-            const transferAmount = distribution.tokens * (10 ** Number(process.env.TOKEN_DECIMALS!));
+            const transferAmount = Number(distribution.tokens) * (10 ** Number(process.env.TOKEN_DECIMALS!));
 
             const tx = await program.methods
                 .transferTokens(new BN(transferAmount))
@@ -268,7 +276,8 @@ async function main() {
 
         // Load TokenDistribution.json
         // const distributionPath = path.join(process.cwd(), "app", "ata-validator", "data", "TokenDistribution.json");
-        const distributionPath = path.join(process.cwd(), "peer-token", "app", "ata-validator", "data", "TokenDistribution.json");
+        const distributionPath = path.join(process.cwd(), "peer-token", "app", "token_operations", "data", "TokenDistribution.json");
+        const TokenDistribution = JSON.parse(fs.readFileSync(distributionPath, 'utf8'));
         console.log("\n🔍 Loading TokenDistribution.json from:", distributionPath);
         
         if (!fs.existsSync(distributionPath)) {
@@ -276,16 +285,16 @@ async function main() {
         }
 
         const distributionData: TokenDistribution = JSON.parse(fs.readFileSync(distributionPath, 'utf8'));
-        console.log(`📊 Total distributions to process: ${distributionData.tokenDistribution.distributions.length}`);
+        console.log(`📊 Total distributions to process: ${distributionData.data.GetGemsForDay.affectedRows.data.length}`);
 
         // Execute all steps in sequence
         await mintToCompany(program, connection, companyWallet, mintPda, companyTokenAccount);
-        await createUserTokenAccounts(program, connection, companyWallet, mintPda, distributionData.tokenDistribution.distributions);
-        await distributeTokens(program, connection, companyWallet, mintPda, companyTokenAccount, distributionData.tokenDistribution.distributions);
+        await createUserTokenAccounts(program, connection, companyWallet, mintPda, distributionData.data.GetGemsForDay.affectedRows.data);
+        await distributeTokens(program, connection, companyWallet, mintPda, companyTokenAccount, distributionData.data.GetGemsForDay.affectedRows.data);
 
         console.log("\n📝 SUMMARY:");
-        console.log(`Total distributions completed: ${distributionData.tokenDistribution.distributions.length}`);
-        console.log(`Total tokens distributed: ${distributionData.tokenDistribution.summary.totalTokensDistributed}`);
+        console.log(`Total distributions completed: ${distributionData.data.GetGemsForDay.affectedRows.data.length}`);
+        console.log(`Total tokens distributed: ${distributionData.data.GetGemsForDay.affectedRows.totalTokens}`);
 
     } catch (error) {
         console.error("\n❌ ERROR:", error);

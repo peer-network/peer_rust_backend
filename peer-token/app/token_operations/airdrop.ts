@@ -13,69 +13,49 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { BN } from "bn.js";
 import * as dotenv from 'dotenv';
+import { TokenDistribution } from "../mockdata/distribution";
+import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utilss";
 
-dotenv.config();
+
 
 // Set up the program ID
-const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+const program_id = getPublicKey("PROGRAM_ID");
+const connection = getSolanaConnection();
+const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+const idl = getIdl();
 
-interface TokenDistribution {
-    tokenDistribution: {
-        date: string;
-        totalTokens: number;
-        distributions: Array<{
-            userId: string;
-            walletAddress: string;
-            gems: number;
-            tokens: number;
-        }>;
-        summary: {
-            totalGems: number;
-            totalTokensDistributed: number;
-        };
-    };
-}
 
-async function main() {
+export async function main(tokendata: TokenDistribution) {
     try {
         console.log("\n🚀 Starting token airdrop process...");
         
-        // Set up connection
-        const connection = new Connection(process.env.RPC_ENDPOINT || clusterApiUrl("devnet"), "confirmed");
         
-        // Load company wallet keypair
-        const companyKeypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
-        );
-        console.log("\n💼 Company wallet (token sender):", companyKeypair.publicKey.toString());
+        console.log("\n💼 Company wallet (token sender):", companyWallet.publicKey.toString());
 
         // Create provider
         const provider = new anchor.AnchorProvider(
             connection,
-            new anchor.Wallet(companyKeypair),
+            new anchor.Wallet(companyWallet),
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
 
-        // Load the IDL
-        // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
-        const idl = JSON.parse(idlFile);
+        
 
         // Create program interface
-        const program = new anchor.Program(idl, PROGRAM_ID, provider);
+        const program = new anchor.Program(idl, program_id, provider);
 
         // Derive the token mint PDA
         const [mintPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("peer-token")],
-            PROGRAM_ID
+            program_id
         );
         console.log("\n🔹 Mint PDA:", mintPda.toString());
 
         // Get company token account
         const companyTokenAccount = getAssociatedTokenAddressSync(
             mintPda,
-            companyKeypair.publicKey,
+            companyWallet.publicKey,
             false,
             TOKEN_2022_PROGRAM_ID
         );
@@ -103,20 +83,14 @@ async function main() {
             console.log(`💰 Initial company token balance: ${formatAmount(initialAccount.amount)} tokens`);
         }
 
-        // Load TokenDistribution.json
-        const distributionPath = path.join(process.cwd(), "app", "ata-validator", "data", "TokenDistribution.json");
-        console.log("\n🔍 Looking for TokenDistribution.json at:", distributionPath);
         
-        if (!fs.existsSync(distributionPath)) {
-            throw new Error(`❌ TokenDistribution.json not found at: ${distributionPath}`);
-        }
 
-        // Read and parse distribution data
-        const distributionData: TokenDistribution = JSON.parse(fs.readFileSync(distributionPath, 'utf8'));
-        console.log(`\n📊 Total distributions to process: ${distributionData.tokenDistribution.distributions.length}`);
+        // let tokenData = tokendata;
+
+        console.log(`\n📊 Total distributions to process: ${tokendata.data.GetGemsForDay.affectedRows.data.length}`);
 
         // Process each distribution
-        for (const distribution of distributionData.tokenDistribution.distributions) {
+        for (const distribution of tokendata.data.GetGemsForDay.affectedRows.data) {
             console.log("\n====================================");
             console.log(`👤 Processing User ID: ${distribution.userId}`);
             console.log(`🔑 Wallet: ${distribution.walletAddress}`);
@@ -138,11 +112,18 @@ async function main() {
                 );
                 console.log("🔹 User Token Account:", userTokenAccount.toString());
 
+                // Check if user token account exists
+                const userTokenAccountInfo = await connection.getAccountInfo(userTokenAccount);
+                if (!userTokenAccountInfo) {
+                    throw new Error("❌ User token account does not exist");
+                }
+                
+
                 // Execute transfer with proper decimal amount
                 const tx = await program.methods
                     .transferTokens(new BN(transferAmount))
                     .accounts({
-                        peerAuthority: companyKeypair.publicKey,
+                        peerAuthority: companyWallet.publicKey,
                         userWallet: userWallet,
                         peerMint: mintPda,
                         peerTokenAccount: companyTokenAccount,
@@ -151,7 +132,7 @@ async function main() {
                         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                         systemProgram: SystemProgram.programId,
                     })
-                    .signers([companyKeypair])
+                    .signers([companyWallet])
                     .rpc();
 
                 console.log("✅ Transfer successful!");
@@ -181,8 +162,8 @@ async function main() {
         }
 
         console.log("\n📝 SUMMARY:");
-        console.log(`Total distributions attempted: ${distributionData.tokenDistribution.distributions.length}`);
-        console.log(`Total tokens distributed: ${distributionData.tokenDistribution.summary.totalTokensDistributed}`);
+        console.log(`Total distributions attempted: ${tokendata.data.GetGemsForDay.affectedRows.data.length}`);
+        console.log(`Total tokens distributed: ${tokendata.data.GetGemsForDay.affectedRows.totalTokens}`);
 
     } catch (error) {
         console.error("\n❌ ERROR:", error);
@@ -193,4 +174,4 @@ async function main() {
     }
 }
 
-main().then(() => console.log("\n✨ Airdrop process completed")); 
+// main(tokenDistribution).then(() => console.log("\n✨ Airdrop process completed")); 

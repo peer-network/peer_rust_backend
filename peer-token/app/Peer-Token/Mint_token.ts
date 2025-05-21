@@ -7,51 +7,41 @@ import {
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
-
+import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utilss";
 dotenv.config();
 
 // Set up the program ID (update with your deployed program ID)
-const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
+const program_id = getPublicKey("PROGRAM_ID");
+const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+const connection = getSolanaConnection();
+const idl = getIdl();
 
 async function main() {
     try {
         console.log("\n🚀 Starting token mint test...");
         
-        // Set up connection and wallet
-        const connection = new Connection(process.env.RPC_ENDPOINT || clusterApiUrl("devnet"), "confirmed");
         
-        // Load wallet from keypair file
-
-        const keypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
-        );
-        console.log("\n💳 Using Company wallet:", keypair.publicKey.toString());
-
         // Create provider
         const provider = new anchor.AnchorProvider(
             connection,
-            new anchor.Wallet(keypair),
+            new anchor.Wallet(companyWallet),
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
 
-        // Load the IDL from the local file
-        // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
-        const idl = JSON.parse(idlFile);
 
         // Create program interface
-        const program = new anchor.Program(idl, PROGRAM_ID, provider);
+        const program = new anchor.Program(idl, program_id, provider);
 
         console.log("\n====================================");
         console.log("🔄 Testing Peer Token Mint Creation");
         console.log("====================================");
-        console.log("🔹 Program ID:", PROGRAM_ID.toString());
+        console.log("🔹 Program ID:", program_id.toString());
         
         // Derive the token mint PDA
         const [mintPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("peer-token")],
-            PROGRAM_ID
+            program_id
         );
         
         console.log("🔹 Mint PDA:", mintPda.toString());
@@ -87,7 +77,7 @@ async function main() {
             const tx = await program.methods
                 .createToken()
                 .accounts({
-                    peerAuthority: keypair.publicKey,
+                    peerAuthority: companyWallet.publicKey,
                     peerMint: mintPda,
                     systemProgram: SystemProgram.programId,
                     tokenProgram: TOKEN_2022_PROGRAM_ID,
