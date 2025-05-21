@@ -11,14 +11,14 @@ pub use instructions::daily_mint::*;
 pub use instructions::airdrop::*;
 
 
-declare_id!("H6XWocY2ZXxZS8iLbo8iG7nhv34q2mB97DRsmgdRJnG1");
+declare_id!("6DzkgjSCmyaQxaWRgtigzCP4D3MFAVqvDYoij12fBoqC");
 
 
 #[program]
 pub mod peer_token {
     use super::*;
     
-
+    //token creation functions
     pub fn create_token(ctx: Context<MintTokenArgs>) -> Result<()> {
         instructions::mint_token::handler(ctx)
     }
