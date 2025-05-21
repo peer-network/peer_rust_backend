@@ -17,7 +17,6 @@ import * as fs from 'fs';
 import path from 'path';
  import dotenv from 'dotenv';
  import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utilss";
- import { createConfig } from "../../utils/config/helper";
 
  dotenv.config( { path:path.resolve(__dirname, "../../.env")});
 

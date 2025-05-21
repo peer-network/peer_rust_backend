@@ -15,11 +15,11 @@ import {
 import { Metaplex, keypairIdentity } from "@metaplex-foundation/js";
 import * as fs from 'fs';
 import path from 'path';
- import dotenv from 'dotenv';
- import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utilss";
- import { createConfig } from "../../utils/config/helper";
+import dotenv from 'dotenv';
+import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utilss";
+import { ErrorHandler, ErrorFactory, ErrorCode } from "../errors";
 
- dotenv.config( { path:path.resolve(__dirname, "../../.env")});
+dotenv.config( { path:path.resolve(__dirname, "../../.env")});
 
 // Program and Token Constants
 const program_id = getPublicKey("PROGRAM_ID");
@@ -27,7 +27,7 @@ const TOKEN_METADATA_PROGRAM_ID = getPublicKey("TOKEN_METADATA_PROGRAM_ID");
 const TOKEN_2022_PROGRAM_ID = getPublicKey("TOKEN_2022_PROGRAM_ID");
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const connection = getSolanaConnection();
- const idl = getIdl();
+const idl = getIdl();
 
 
 async function main() {
@@ -86,22 +86,24 @@ async function main() {
                 console.log("🔹 Account Size:", mintAccountInfo.data.length);
                 console.log("🔹 Owner:", mintAccountInfo.owner.toString());
 
+                try {
+                    const mintInfo = await getMint(
+                        connection,
+                        mintPda,
+                        "confirmed",
+                        TOKEN_2022_PROGRAM_ID
+                    );
 
-
-                const mintInfo = await getMint(
-                    connection,
-                    mintPda,
-                    "confirmed",
-                    TOKEN_2022_PROGRAM_ID
-                );
-
-                console.log("🔹 Token Supply:", mintInfo.supply.toString());
-                console.log("🔹 Decimals:", mintInfo.decimals);
-                console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
-                console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
+                    console.log("🔹 Token Supply:", mintInfo.supply.toString());
+                    console.log("🔹 Decimals:", mintInfo.decimals);
+                    console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
+                    console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
+                } catch (error) {
+                    ErrorHandler.logError(error);
+                    console.log("❌ Could not fetch mint information");
+                }
             } else {
                 try {
-
                     console.log("❓ Mint account does not exist, Creating mint account");
                     const tx = await program.methods
                         .createToken()
@@ -134,8 +136,7 @@ async function main() {
                     console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
                     console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
                 } catch (error) {
-                    console.error("❌ Error creating mint:", error);
-                    return;
+                    throw ErrorFactory.transactionFailed("create token mint", error);
                 }
             }
         }
@@ -149,10 +150,8 @@ async function main() {
             const mintAccountInfo = await connection.getAccountInfo(mintPda);
 
             if(!mintAccountInfo){
-                console.log("❌ Mint account does not exist, Please create mint account first");
-                return;
+                throw ErrorFactory.mintNotFound(mintPda);
             }
-
 
             const companyAta = getAssociatedTokenAddressSync(
                 mintPda,
@@ -195,12 +194,12 @@ async function main() {
                         console.log("✅ Company token account verified!");
                         console.log("🔹 Account Size:", verifyAtaInfo.data.length);
                         console.log("🔹 Owner Program:", verifyAtaInfo.owner.toString());
+                    } else {
+                        throw ErrorFactory.tokenAccountNotFound(companyAta, companyWallet.publicKey);
                     }
                    
                 } catch (error) {
-                    console.error("❌ Error creating company token account:", error);
-                    if (error instanceof Error) console.error(error.message);
-                    return;
+                    throw ErrorFactory.transactionFailed("create company token account", error);
                 }
             }
         }
@@ -304,11 +303,19 @@ async function main() {
         console.log("- Update metadata: ts-node Peer.ts update \"New Name\" \"NEW\" \"new-uri\"");
 
     } catch (error) {
-        console.error("\n❌ FATAL ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
+        console.error("\n❌ ERROR DURING PEER TOKEN OPERATION:");
+        const errorDetails = ErrorHandler.handle(error);
+        console.error(`Error code: ${errorDetails.code}, Message: ${errorDetails.message}`);
+        
+        if (errorDetails.details) {
+            console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
         }
+        
+        if (errorDetails.onChainCode) {
+            console.error(`On-chain error code: ${errorDetails.onChainCode}`);
+        }
+        
+        process.exit(1);
     }
 }
 

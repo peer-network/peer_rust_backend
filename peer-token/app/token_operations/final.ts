@@ -14,6 +14,7 @@ import { BN } from "bn.js";
 // import * as dotenv from 'dotenv';
 import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl, getTokenDecimals, getDailyMintAmount } from "../../utilss";
 import { tokenDistribution } from "../mockdata/distribution";
+import { ErrorHandler, ErrorFactory, ErrorCode, OnChainErrorCode, Validators } from "../errors/index";
 
 
 // Load environment variables
@@ -27,7 +28,7 @@ const daily_mint_amount = getDailyMintAmount("DAILY_MINT_AMOUNT");
 // Set up the program ID from env
 const program_id = getPublicKey("PROGRAM_ID");
 
-export interface TokenDistribution  {
+export interface TokenDistribution {
     data: {
         GetGemsForDay: {
             status: string;
@@ -37,7 +38,7 @@ export interface TokenDistribution  {
                 data: Array<{
                     userId?: string;
                     walletAddress?: string;
-                    tokens?: string;
+                    tokens?: string | number;
                 }>;
                 totalTokens?: string;
             };
@@ -89,10 +90,13 @@ async function mintToCompany(
         const tokenAccountInfo = await connection.getTokenAccountBalance(companyTokenAccount);
         console.log("\n💰 Company Token Balance:", tokenAccountInfo.value.uiAmount);
     } catch (error) {
-        if (error instanceof Error && error.message.includes("AlreadyMintedToday")) {
+        const errorInfo = ErrorHandler.handle(error);
+        
+        // Check if it's the "already minted today" error
+        if (errorInfo.onChainCode === OnChainErrorCode.ALREADY_MINTED_TODAY) {
             console.log("ℹ️ Tokens have already been minted today. Proceeding with distribution.");
         } else {
-            throw error;
+            throw ErrorFactory.transactionFailed("daily token mint", error);
         }
     }
 }
@@ -102,22 +106,27 @@ async function createUserTokenAccounts(
     connection: Connection,
     companyKeypair: Keypair,
     mintPda: PublicKey,
-    TokenDistribution: TokenDistribution,
-    // distributions: TokenDistribution["data"]["GetGemsForDay"]["affectedRows"]["data"]
+    distributions: TokenDistribution["data"]["GetGemsForDay"]["affectedRows"]["data"]
 ): Promise<void> {
     console.log("\n🚀 Step 2: Creating User Token Accounts");
+    
+    let successfulCreations = 0;
+    let failedCreations = 0;
 
-     
-    for (const tokenDistribution of  ) {
-        if (!distribution.walletAddress) {
-            console.error(`❌ User ${distribution.userId} has no wallet address`);
+    for (const distribution of distributions) {
+        if (!distribution.userId || !distribution.walletAddress) {
+            console.error(`❌ User ${distribution.userId || 'unknown'} has no wallet address`);
+            failedCreations++;
             continue;
         }
-        const userWallet = new PublicKey(distribution.walletAddress);
+        
         console.log(`\n👤 Processing User: ${distribution.userId}`);
         console.log(`🔑 Wallet: ${distribution.walletAddress}`);
 
         try {
+            // Validate wallet address
+            const userWallet = Validators.publicKey(distribution.walletAddress, "user wallet address");
+            
             const userTokenAccount = getAssociatedTokenAddressSync(
                 mintPda,
                 userWallet,
@@ -144,13 +153,21 @@ async function createUserTokenAccounts(
                 console.log("✅ Token account created");
                 console.log("🔹 Transaction:", tx);
                 console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${tx}?cluster=devnet`);
+                successfulCreations++;
             } else {
                 console.log("ℹ️ Token account already exists");
+                successfulCreations++;
             }
         } catch (error) {
-            console.error(`❌ Error creating token account for ${distribution.userId}:`, error);
+            console.error(`❌ Error creating token account for ${distribution.userId}:`);
+            ErrorHandler.logError(error);
+            failedCreations++;
         }
     }
+    
+    console.log(`\n📊 ACCOUNT CREATION SUMMARY:`);
+    console.log(`✅ Successful: ${successfulCreations} accounts`);
+    console.log(`❌ Failed: ${failedCreations} accounts`);
 }
 
 async function distributeTokens(
@@ -163,12 +180,23 @@ async function distributeTokens(
 ): Promise<void> {
     console.log("\n🚀 Step 3: Distributing Tokens");
 
+    // Format token amounts based on decimals
+    const formatAmount = (amount: number | bigint) => {
+        return Number(amount) / (10 ** token_decimals);
+    };
+
     // Check initial company balance
     const initialCompanyInfo = await connection.getAccountInfo(companyTokenAccount);
-    if (initialCompanyInfo) {
-        const initialAccount = unpackAccount(companyTokenAccount, initialCompanyInfo, TOKEN_2022_PROGRAM_ID);
-        console.log(`💰 Initial company token balance: ${Number(initialAccount.amount) / (10 ** Number(process.env.TOKEN_DECIMALS!))} tokens`);
+    if (!initialCompanyInfo) {
+        throw ErrorFactory.tokenAccountNotFound(companyTokenAccount, companyKeypair.publicKey);
     }
+    
+    const initialAccount = unpackAccount(companyTokenAccount, initialCompanyInfo, TOKEN_2022_PROGRAM_ID);
+    console.log(`💰 Initial company token balance: ${formatAmount(initialAccount.amount)} tokens`);
+
+    let successfulTransfers = 0;
+    let failedTransfers = 0;
+    let totalTokensDistributed = 0;
 
     for (const distribution of distributions) {
         console.log("\n====================================");
@@ -177,7 +205,20 @@ async function distributeTokens(
         console.log(`💰 Tokens to send: ${distribution.tokens}`);
 
         try {
-            const userWallet = new PublicKey(distribution.walletAddress!);
+            // Validate required fields
+            if (!distribution.userId || !distribution.walletAddress || !distribution.tokens) {
+                throw ErrorFactory.missingRequiredField("userId, walletAddress or tokens");
+            }
+            
+            // Validate wallet address
+            const userWallet = Validators.publicKey(distribution.walletAddress, "user wallet address");
+            
+            // Validate token amount
+            const tokens = Number(distribution.tokens);
+            if (isNaN(tokens) || tokens <= 0) {
+                throw new Error(`Invalid token amount for user ${distribution.userId}: ${distribution.tokens}`);
+            }
+            
             const userTokenAccount = getAssociatedTokenAddressSync(
                 mintPda,
                 userWallet,
@@ -185,14 +226,20 @@ async function distributeTokens(
                 TOKEN_2022_PROGRAM_ID
             );
             console.log("🔹 User Token Account:", userTokenAccount.toString());
+            
+            // Verify the user token account exists
+            const userAccountInfo = await connection.getAccountInfo(userTokenAccount);
+            if (!userAccountInfo) {
+                throw ErrorFactory.tokenAccountNotFound(userTokenAccount, userWallet);
+            }
 
             // Convert token amount to proper decimal representation
-            const transferAmount = Number(distribution.tokens) * (10 ** Number(process.env.TOKEN_DECIMALS!));
+            const transferAmount = tokens * (10 ** token_decimals);
 
             const tx = await program.methods
                 .transferTokens(new BN(transferAmount))
                 .accounts({
-                    peerAuthority: companyWallet.publicKey,
+                    peerAuthority: companyKeypair.publicKey,
                     userWallet: userWallet,
                     peerMint: mintPda,
                     peerTokenAccount: companyTokenAccount,
@@ -201,7 +248,7 @@ async function distributeTokens(
                     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                     systemProgram: SystemProgram.programId,
                 })
-                .signers([companyWallet])
+                .signers([companyKeypair])
                 .rpc();
 
             console.log("✅ Transfer successful!");
@@ -213,11 +260,15 @@ async function distributeTokens(
             const accountInfo = await connection.getAccountInfo(userTokenAccount);
             if (accountInfo) {
                 const account = unpackAccount(userTokenAccount, accountInfo, TOKEN_2022_PROGRAM_ID);
-                console.log(`💰 New token balance: ${Number(account.amount) / (10 ** Number(process.env.TOKEN_DECIMALS!))} tokens`);
+                console.log(`💰 New token balance: ${formatAmount(account.amount)} tokens`);
             }
+            
+            successfulTransfers++;
+            totalTokensDistributed += tokens;
         } catch (error) {
-            console.error(`❌ Error processing transfer for user ${distribution.userId}:`, error);
-            if (error instanceof Error) console.error(error.message);
+            console.error(`❌ Error processing transfer for user ${distribution.userId}:`);
+            ErrorHandler.logError(error);
+            failedTransfers++;
         }
     }
 
@@ -225,8 +276,13 @@ async function distributeTokens(
     const finalCompanyInfo = await connection.getAccountInfo(companyTokenAccount);
     if (finalCompanyInfo) {
         const finalAccount = unpackAccount(companyTokenAccount, finalCompanyInfo, TOKEN_2022_PROGRAM_ID);
-        console.log(`\n💰 Final company token balance: ${Number(finalAccount.amount) / (10 ** Number(process.env.TOKEN_DECIMALS!))} tokens`);
+        console.log(`\n💰 Final company token balance: ${formatAmount(finalAccount.amount)} tokens`);
     }
+    
+    console.log("\n📊 DISTRIBUTION SUMMARY:");
+    console.log(`✅ Successful transfers: ${successfulTransfers}`);
+    console.log(`❌ Failed transfers: ${failedTransfers}`);
+    console.log(`💰 Total tokens distributed: ${totalTokensDistributed}`);
 }
 
 async function main() {
@@ -236,10 +292,6 @@ async function main() {
         // Set up connection
         const connection = getSolanaConnection();
         
-        // Load company wallet keypair
-        // const companyKeypair = Keypair.fromSecretKey(
-        //     Buffer.from(JSON.parse(fs.readFileSync(companyWallet.publicKey.toBase58(), "utf-8")))
-        // );
         console.log("\n💼 Company wallet:", companyWallet.publicKey.toString());
 
         // Create provider
@@ -249,11 +301,6 @@ async function main() {
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
-
-        // Load the IDL
-        // const idlPath = path.join(process.cwd(), "target", "idl", "peer_token.json");
-        // const idlFile = fs.readFileSync(process.env.IDL_PATH!, 'utf8');
-        // const idl = JSON.parse(idlFile);
 
         // Create program interface
         const program = new anchor.Program(idl, program_id, provider);
@@ -265,6 +312,14 @@ async function main() {
         );
         console.log("\n🔹 Mint PDA:", mintPda.toString());
 
+        // Check if mint exists
+        const mintAccountInfo = await connection.getAccountInfo(mintPda);
+        if (!mintAccountInfo) {
+            throw ErrorFactory.mintNotFound(mintPda);
+        }
+        
+        console.log("✅ Mint account exists!");
+
         // Get company token account
         const companyTokenAccount = getAssociatedTokenAddressSync(
             mintPda,
@@ -275,34 +330,66 @@ async function main() {
         console.log("🔹 Company Token Account:", companyTokenAccount.toString());
 
         // Load TokenDistribution.json
-        // const distributionPath = path.join(process.cwd(), "app", "ata-validator", "data", "TokenDistribution.json");
         const distributionPath = path.join(process.cwd(), "peer-token", "app", "token_operations", "data", "TokenDistribution.json");
-        const TokenDistribution = JSON.parse(fs.readFileSync(distributionPath, 'utf8'));
         console.log("\n🔍 Loading TokenDistribution.json from:", distributionPath);
         
-        if (!fs.existsSync(distributionPath)) {
-            throw new Error(`❌ TokenDistribution.json not found at: ${distributionPath}`);
+        let distributionData: TokenDistribution;
+        
+        if (fs.existsSync(distributionPath)) {
+            try {
+                distributionData = JSON.parse(fs.readFileSync(distributionPath, 'utf8'));
+            } catch (error) {
+                if (error instanceof SyntaxError) {
+                    throw ErrorFactory.invalidJson(error);
+                }
+                throw error;
+            }
+        } else {
+            console.log("⚠️ TokenDistribution.json not found, using mock data");
+            distributionData = tokenDistribution as unknown as TokenDistribution;
+        }
+        
+        // Validate distribution data
+        if (!distributionData?.data?.GetGemsForDay?.affectedRows?.data || 
+            !Array.isArray(distributionData.data.GetGemsForDay.affectedRows.data)) {
+            throw ErrorFactory.invalidDataStructure(
+                "data.GetGemsForDay.affectedRows.data array", 
+                distributionData
+            );
         }
 
-        const distributionData: TokenDistribution = JSON.parse(fs.readFileSync(distributionPath, 'utf8'));
-        console.log(`📊 Total distributions to process: ${distributionData.data.GetGemsForDay.affectedRows.data.length}`);
+        const distributions = distributionData.data.GetGemsForDay.affectedRows.data;
+        console.log(`📊 Total distributions to process: ${distributions.length}`);
 
         // Execute all steps in sequence
         await mintToCompany(program, connection, companyWallet, mintPda, companyTokenAccount);
-        await createUserTokenAccounts(program, connection, companyWallet, mintPda, distributionData.data.GetGemsForDay.affectedRows.data);
-        await distributeTokens(program, connection, companyWallet, mintPda, companyTokenAccount, distributionData.data.GetGemsForDay.affectedRows.data);
+        await createUserTokenAccounts(program, connection, companyWallet, mintPda, distributions);
+        await distributeTokens(program, connection, companyWallet, mintPda, companyTokenAccount, distributions);
 
         console.log("\n📝 SUMMARY:");
-        console.log(`Total distributions completed: ${distributionData.data.GetGemsForDay.affectedRows.data.length}`);
-        console.log(`Total tokens distributed: ${distributionData.data.GetGemsForDay.affectedRows.totalTokens}`);
+        console.log(`Total distributions completed: ${distributions.length}`);
+        console.log(`Total tokens distributed: ${distributionData.data.GetGemsForDay.affectedRows.totalTokens || 'Unknown'}`);
 
     } catch (error) {
-        console.error("\n❌ ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
+        console.error("\n❌ ERROR DURING TOKEN DISTRIBUTION:");
+        const errorDetails = ErrorHandler.handle(error);
+        console.error(`Error code: ${errorDetails.code}, Message: ${errorDetails.message}`);
+        
+        if (errorDetails.details) {
+            console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
         }
+        
+        if (errorDetails.onChainCode) {
+            console.error(`On-chain error code: ${errorDetails.onChainCode}`);
+        }
+        
+        process.exit(1);
     }
 }
 
-main().then(() => console.log("\n✨ Complete token distribution process finished")); 
+// Run the main function if this is the entry point
+if (require.main === module) {
+    main().then(() => console.log("\n✨ Complete token distribution process finished"));
+}
+
+export { main, mintToCompany, createUserTokenAccounts, distributeTokens }; 

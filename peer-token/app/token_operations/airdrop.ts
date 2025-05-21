@@ -15,6 +15,7 @@ import { BN } from "bn.js";
 import * as dotenv from 'dotenv';
 import { TokenDistribution } from "../mockdata/distribution";
 import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utilss";
+import { ErrorHandler, ErrorFactory, ErrorCode, OnChainErrorCode, Validators } from "../errors/index";
 
 
 
@@ -62,12 +63,18 @@ export async function main(tokendata: TokenDistribution) {
         console.log("🔹 Company Token Account:", companyTokenAccount.toString());
 
         // Get mint info to get decimals
-        const mintInfo = await getMint(
-            connection,
-            mintPda,
-            'confirmed',
-            TOKEN_2022_PROGRAM_ID
-        );
+        let mintInfo;
+        try {
+            mintInfo = await getMint(
+                connection,
+                mintPda,
+                'confirmed',
+                TOKEN_2022_PROGRAM_ID
+            );
+        } catch (error) {
+            throw ErrorFactory.mintNotFound(mintPda);
+        }
+        
         const decimals = mintInfo.decimals;
         console.log(`🔹 Token Decimals: ${decimals}`);
 
@@ -78,16 +85,28 @@ export async function main(tokendata: TokenDistribution) {
 
         // Check initial company balance
         const initialCompanyInfo = await connection.getAccountInfo(companyTokenAccount);
-        if (initialCompanyInfo) {
-            const initialAccount = unpackAccount(companyTokenAccount, initialCompanyInfo, TOKEN_2022_PROGRAM_ID);
-            console.log(`💰 Initial company token balance: ${formatAmount(initialAccount.amount)} tokens`);
+        if (!initialCompanyInfo) {
+            throw ErrorFactory.tokenAccountNotFound(companyTokenAccount, companyWallet.publicKey);
         }
+        
+        const initialAccount = unpackAccount(companyTokenAccount, initialCompanyInfo, TOKEN_2022_PROGRAM_ID);
+        console.log(`💰 Initial company token balance: ${formatAmount(initialAccount.amount)} tokens`);
 
         
 
         // let tokenData = tokendata;
+        if (!tokendata?.data?.GetGemsForDay?.affectedRows?.data) {
+            throw ErrorFactory.invalidDataStructure(
+                "data.GetGemsForDay.affectedRows.data array",
+                tokendata
+            );
+        }
 
         console.log(`\n📊 Total distributions to process: ${tokendata.data.GetGemsForDay.affectedRows.data.length}`);
+
+        let successfulTransfers = 0;
+        let failedTransfers = 0;
+        let totalTokensDistributed = 0;
 
         // Process each distribution
         for (const distribution of tokendata.data.GetGemsForDay.affectedRows.data) {
@@ -97,7 +116,18 @@ export async function main(tokendata: TokenDistribution) {
             console.log(`💰 Tokens to send: ${distribution.tokens}`);
 
             try {
-                const userWallet = new PublicKey(distribution.walletAddress);
+                // Validate required fields
+                if (!distribution.userId || !distribution.walletAddress || !distribution.tokens) {
+                    throw ErrorFactory.missingRequiredField("userId, walletAddress or tokens");
+                }
+                
+                // Validate wallet address
+                let userWallet: PublicKey;
+                try {
+                    userWallet = Validators.publicKey(distribution.walletAddress, "user wallet address");
+                } catch (error) {
+                    throw new Error(`Invalid wallet address format for user ${distribution.userId}`);
+                }
                 
                 // Convert token amount to proper decimal representation
                 const transferAmount = distribution.tokens * (10 ** 9); // 9 decimals like in mint_to_company
@@ -115,7 +145,7 @@ export async function main(tokendata: TokenDistribution) {
                 // Check if user token account exists
                 const userTokenAccountInfo = await connection.getAccountInfo(userTokenAccount);
                 if (!userTokenAccountInfo) {
-                    throw new Error("❌ User token account does not exist");
+                    throw ErrorFactory.tokenAccountNotFound(userTokenAccount, userWallet);
                 }
                 
 
@@ -146,10 +176,14 @@ export async function main(tokendata: TokenDistribution) {
                     const account = unpackAccount(userTokenAccount, accountInfo, TOKEN_2022_PROGRAM_ID);
                     console.log(`💰 New token balance: ${formatAmount(account.amount)} tokens`);
                 }
+                
+                successfulTransfers++;
+                totalTokensDistributed += distribution.tokens;
 
             } catch (error) {
-                console.error(`❌ Error processing transfer for user ${distribution.userId}:`, error);
-                if (error instanceof Error) console.error(error.message);
+                console.error(`❌ Error processing transfer for user ${distribution.userId}:`);
+                ErrorHandler.logError(error);
+                failedTransfers++;
                 // Continue with next distribution
             }
         }
@@ -163,14 +197,24 @@ export async function main(tokendata: TokenDistribution) {
 
         console.log("\n📝 SUMMARY:");
         console.log(`Total distributions attempted: ${tokendata.data.GetGemsForDay.affectedRows.data.length}`);
-        console.log(`Total tokens distributed: ${tokendata.data.GetGemsForDay.affectedRows.totalTokens}`);
+        console.log(`✅ Successful transfers: ${successfulTransfers}`);
+        console.log(`❌ Failed transfers: ${failedTransfers}`);
+        console.log(`💰 Total tokens distributed: ${totalTokensDistributed}`);
 
     } catch (error) {
-        console.error("\n❌ ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
+        console.error("\n❌ ERROR DURING AIRDROP:");
+        const errorDetails = ErrorHandler.handle(error);
+        console.error(`Error code: ${errorDetails.code}, Message: ${errorDetails.message}`);
+        
+        if (errorDetails.details) {
+            console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
         }
+        
+        if (errorDetails.onChainCode) {
+            console.error(`On-chain error code: ${errorDetails.onChainCode}`);
+        }
+        
+        throw error; // Re-throw so calling code can handle it
     }
 }
 
