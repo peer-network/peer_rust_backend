@@ -19,7 +19,7 @@ pub struct MintTokenArgs<'info> {
         payer = peer_authority,
         mint::decimals = 9,  
         mint::authority = peer_authority.key(),
-        mint::freeze_authority = peer_authority.key(),
+        // mint::freeze_authority = peer_authority.key(),
         seeds = [b"peer-token"],
         bump,
     )]
