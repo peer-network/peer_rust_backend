@@ -13,11 +13,7 @@ pub use instructions::airdrop::*;
 pub use error::*;
 
 
-<<<<<<< HEAD
-declare_id!("HXoJTgD7WxQ9P4Y1dyg99agXHoMnr9S9iJ216Rky1hAY");
-=======
-declare_id!("6DzkgjSCmyaQxaWRgtigzCP4D3MFAVqvDYoij12fBoqC");
->>>>>>> development
+declare_id!("2UwS529cAMPeXwqEuF9P2HvZ1Y5ggTt4616PpC7uW1Tj");
 
 
 #[program]

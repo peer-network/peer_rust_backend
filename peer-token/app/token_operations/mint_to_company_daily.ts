@@ -220,14 +220,4 @@ export async function mint(): Promise<MintResponseImpl> {
             "Undefined error occurred"
         );
     }
-<<<<<<< HEAD
 }
-=======
-    return MintResponseImpl.error(
-            "60000",
-            "Undefined error"
-    )
-}
-
-// mint();
->>>>>>> development
