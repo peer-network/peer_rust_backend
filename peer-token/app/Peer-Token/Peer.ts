@@ -16,7 +16,7 @@ import { Metaplex, keypairIdentity } from "@metaplex-foundation/js";
 import * as fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
-import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utilss";
+import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl } from "../../utils";
 import { ErrorHandler, ErrorFactory, ErrorCode } from "../errors";
 
 dotenv.config( { path:path.resolve(__dirname, "../../.env")});
@@ -99,7 +99,7 @@ async function main() {
                     console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
                     console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
                 } catch (error) {
-                    ErrorHandler.logError(error);
+                    ErrorHandler.handle(error);
                     console.log("❌ Could not fetch mint information");
                 }
             } else {
@@ -240,7 +240,8 @@ async function main() {
                     console.log("🔹 Transaction:", response.signature);
                     console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${response.signature}?cluster=devnet`);
                 } catch (error) {
-                    console.error("❌ Error updating metadata:", error);
+                    console.error("❌ Error updating metadata:");
+                    ErrorHandler.handle(error);
                     return;
                 }
             } else if (!metadataAccountInfo) {
@@ -270,7 +271,8 @@ async function main() {
                     console.log("🔹 Transaction:", tx);
                     console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${tx}?cluster=devnet`);
                 } catch (error) {
-                    console.error("❌ Error creating metadata:", error);
+                    console.error("❌ Error creating metadata:");
+                    ErrorHandler.handle(error);
                     return;
                 }
             } else {
@@ -304,17 +306,7 @@ async function main() {
 
     } catch (error) {
         console.error("\n❌ ERROR DURING PEER TOKEN OPERATION:");
-        const errorDetails = ErrorHandler.handle(error);
-        console.error(`Error code: ${errorDetails.code}, Message: ${errorDetails.message}`);
-        
-        if (errorDetails.details) {
-            console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
-        }
-        
-        if (errorDetails.onChainCode) {
-            console.error(`On-chain error code: ${errorDetails.onChainCode}`);
-        }
-        
+        ErrorHandler.handle(error);
         process.exit(1);
     }
 }

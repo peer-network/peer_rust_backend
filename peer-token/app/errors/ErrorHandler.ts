@@ -1,450 +1,334 @@
 import { PublicKey } from "@solana/web3.js";
 
-// On-chain Error Codes from error.rs (6000+)
-export enum OnChainErrorCode {
-  // 6000-6019 align with backend error.rs file
-  INVALID_AUTHORITY = 6000,
-  INVALID_MINT = 6001,
-  INVALID_TOKEN_ACCOUNT = 6002,
-  INSUFFICIENT_PEER_TOKENS = 6003,
-  DAILY_MINT_LIMIT_EXCEEDED = 6004,
-  TOO_EARLY_FOR_DAILY_MINT = 6005,
-  INVALID_TRANSFER_AMOUNT = 6006,
-  METADATA_CREATION_FAILED = 6007,
-  UNAUTHORIZED_TRANSFER = 6008,
-  INVALID_TOKEN_DECIMALS = 6009,
-  INVALID_TOKEN_METADATA = 6010,
-  INVALID_OWNER = 6011,
-  INVALID_TOKEN_ACCOUNT_INIT = 6012,
-  INVALID_METADATA_ACCOUNT = 6013,
-  INVALID_MINT_AUTHORITY = 6014,
-  INVALID_FREEZE_AUTHORITY = 6015,
-  INVALID_ASSOCIATED_TOKEN_ACCOUNT = 6016,
-  ALREADY_MINTED_TODAY = 6017,
-  INVALID_PEER_TOKEN_ACCOUNT = 6018,
-  INSUFFICIENT_AMOUNT = 6019,
-}
-
-// Client-side Error Codes (1-700)
+// Simple Error Codes
 export enum ErrorCode {
-  // General Errors (1-100)
   UNKNOWN_ERROR = 1,
-  INVALID_PARAMETER = 2,
-  CONFIGURATION_ERROR = 3,
-  ENVIRONMENT_ERROR = 4,
-  FILE_NOT_FOUND = 5,
-
-  // Solana Connection Errors (101-200)
   CONNECTION_FAILED = 101,
-  RPC_ERROR = 102,
-  NETWORK_TIMEOUT = 103,
-
-  // Wallet and Key Management Errors (201-300)
-  WALLET_FILE_NOT_FOUND = 201,
-  INVALID_KEYPAIR = 202,
-  UNAUTHORIZED_ACCESS = 203,
-  
-  // Token Operation Errors (301-400)
-  MINT_ACCOUNT_NOT_FOUND = 301,
+  WALLET_NOT_FOUND = 201,
+  MINT_NOT_FOUND = 301,
   TOKEN_ACCOUNT_NOT_FOUND = 302,
   INSUFFICIENT_BALANCE = 303,
-  INVALID_TOKEN_AMOUNT = 304,
-  MINT_CREATION_FAILED = 305,
-  TOKEN_ACCOUNT_CREATION_FAILED = 306,
-  TOKEN_TRANSFER_FAILED = 307,
-
-  // Metadata Errors (401-500)
-  METADATA_ACCOUNT_NOT_FOUND = 401,
-  METADATA_CREATION_FAILED = 402,
-  METADATA_UPDATE_FAILED = 403,
-
-  // Data Format Errors (501-600)
-  INVALID_JSON_FORMAT = 501,
-  MISSING_REQUIRED_FIELD = 502,
-  INVALID_DATA_STRUCTURE = 503,
-  
-  // Transaction Errors (601-700)
+  METADATA_NOT_FOUND = 401,
   TRANSACTION_FAILED = 601,
-  TRANSACTION_TIMEOUT = 602,
-  TRANSACTION_SIMULATION_FAILED = 603,
-  TRANSACTION_CONFIRMATION_FAILED = 604,
-  ON_CHAIN_ERROR = 605,
+  ALREADY_MINTED_TODAY = 602,
+  VALIDATION_ERROR = 701,
 }
 
-// Map on-chain error codes to client error codes
-export const mapOnChainErrorToClientError = (onChainCode: number | undefined): ErrorCode => {
-  if (onChainCode === undefined) {
-    return ErrorCode.ON_CHAIN_ERROR;
-  }
-  
-  switch (onChainCode) {
-    case OnChainErrorCode.INVALID_AUTHORITY:
-      return ErrorCode.UNAUTHORIZED_ACCESS;
-    case OnChainErrorCode.INVALID_MINT:
-      return ErrorCode.MINT_ACCOUNT_NOT_FOUND;
-    case OnChainErrorCode.INVALID_TOKEN_ACCOUNT:
-    case OnChainErrorCode.INVALID_PEER_TOKEN_ACCOUNT:
-    case OnChainErrorCode.INVALID_ASSOCIATED_TOKEN_ACCOUNT:
-      return ErrorCode.TOKEN_ACCOUNT_NOT_FOUND;
-    case OnChainErrorCode.INSUFFICIENT_PEER_TOKENS:
-    case OnChainErrorCode.INSUFFICIENT_AMOUNT:
-      return ErrorCode.INSUFFICIENT_BALANCE;
-    case OnChainErrorCode.INVALID_TRANSFER_AMOUNT:
-      return ErrorCode.INVALID_TOKEN_AMOUNT;
-    case OnChainErrorCode.METADATA_CREATION_FAILED:
-      return ErrorCode.METADATA_CREATION_FAILED;
-    case OnChainErrorCode.DAILY_MINT_LIMIT_EXCEEDED:
-    case OnChainErrorCode.TOO_EARLY_FOR_DAILY_MINT:
-    case OnChainErrorCode.ALREADY_MINTED_TODAY:
-      return ErrorCode.TRANSACTION_FAILED;
-    case OnChainErrorCode.UNAUTHORIZED_TRANSFER:
-      return ErrorCode.UNAUTHORIZED_ACCESS;
-    case OnChainErrorCode.INVALID_TOKEN_DECIMALS:
-    case OnChainErrorCode.INVALID_TOKEN_METADATA:
-    case OnChainErrorCode.INVALID_METADATA_ACCOUNT:
-      return ErrorCode.INVALID_PARAMETER;
-    case OnChainErrorCode.INVALID_OWNER:
-    case OnChainErrorCode.INVALID_MINT_AUTHORITY:
-    case OnChainErrorCode.INVALID_FREEZE_AUTHORITY:
-      return ErrorCode.UNAUTHORIZED_ACCESS;
-    case OnChainErrorCode.INVALID_TOKEN_ACCOUNT_INIT:
-      return ErrorCode.TOKEN_ACCOUNT_CREATION_FAILED;
-    default:
-      return ErrorCode.ON_CHAIN_ERROR;
-  }
-};
+// On-chain error codes from the Rust program
+export enum OnChainErrorCode {
+  INVALID_MINT = 6000,
+  INVALID_MINT_AUTHORITY = 6001,
+  INVALID_OWNER = 6002,
+  INVALID_TRANSFER_AMOUNT = 6003,
+  INSUFFICIENT_PEER_TOKENS = 6004,
+  ALREADY_MINTED_TODAY = 6005,
+  INVALID_TOKEN_DECIMALS = 6006,
+  INVALID_TOKEN_METADATA = 6007,
+  METADATA_CREATION_FAILED = 6008
+}
 
-// Get human-readable error message for on-chain errors
-export const getOnChainErrorMessage = (code: number | undefined): string => {
-  if (code === undefined) {
-    return "Unknown on-chain error";
-  }
-  
+// Simple Error Response Interface
+export interface ErrorResponse {
+  code: number;
+  message: string;
+  details?: any;
+  onChainCode?: number; // Add on-chain error code tracking
+}
+
+// Helper function to get human-readable messages for on-chain errors
+function getOnChainErrorMessage(code: number): string {
   switch (code) {
-    case OnChainErrorCode.INVALID_AUTHORITY:
-      return "Invalid authority to perform this operation";
     case OnChainErrorCode.INVALID_MINT:
-      return "Invalid token mint address";
-    case OnChainErrorCode.INVALID_TOKEN_ACCOUNT:
-      return "Invalid token account";
-    case OnChainErrorCode.INSUFFICIENT_PEER_TOKENS:
-      return "Insufficient token balance";
-    case OnChainErrorCode.DAILY_MINT_LIMIT_EXCEEDED:
-      return "Maximum daily mint limit exceeded";
-    case OnChainErrorCode.TOO_EARLY_FOR_DAILY_MINT:
-      return "Too early for next daily mint";
+      return "Invalid mint address provided";
+    case OnChainErrorCode.INVALID_MINT_AUTHORITY:
+      return "Invalid mint authority";
+    case OnChainErrorCode.INVALID_OWNER:
+      return "Invalid token account owner";
     case OnChainErrorCode.INVALID_TRANSFER_AMOUNT:
       return "Invalid transfer amount";
-    case OnChainErrorCode.METADATA_CREATION_FAILED:
-      return "Metadata creation failed";
-    case OnChainErrorCode.UNAUTHORIZED_TRANSFER:
-      return "Unauthorized token transfer";
+    case OnChainErrorCode.INSUFFICIENT_PEER_TOKENS:
+      return "Insufficient PEER token balance";
+    case OnChainErrorCode.ALREADY_MINTED_TODAY:
+      return "Already minted tokens today";
     case OnChainErrorCode.INVALID_TOKEN_DECIMALS:
       return "Invalid token decimals";
     case OnChainErrorCode.INVALID_TOKEN_METADATA:
       return "Invalid token metadata";
-    case OnChainErrorCode.INVALID_OWNER:
-      return "Invalid token account owner";
-    case OnChainErrorCode.INVALID_TOKEN_ACCOUNT_INIT:
-      return "Invalid token account initialization";
-    case OnChainErrorCode.INVALID_METADATA_ACCOUNT:
-      return "Invalid metadata account";
-    case OnChainErrorCode.INVALID_MINT_AUTHORITY:
-      return "Invalid mint authority";
-    case OnChainErrorCode.INVALID_FREEZE_AUTHORITY:
-      return "Invalid freeze authority";
-    case OnChainErrorCode.INVALID_ASSOCIATED_TOKEN_ACCOUNT:
-      return "Invalid associated token account";
-    case OnChainErrorCode.ALREADY_MINTED_TODAY:
-      return "Tokens have already been minted today";
-    case OnChainErrorCode.INVALID_PEER_TOKEN_ACCOUNT:
-      return "Invalid peer token account";
-    case OnChainErrorCode.INSUFFICIENT_AMOUNT:
-      return "Cannot transfer zero or insufficient amount";
+    case OnChainErrorCode.METADATA_CREATION_FAILED:
+      return "Failed to create token metadata";
     default:
-      return "Unknown on-chain error";
-  }
-};
-
-// Base Error Class
-export class PeerTokenError extends Error {
-  code: ErrorCode;
-  details?: Record<string, any>;
-  onChainCode?: number;
-
-  constructor(code: ErrorCode, message: string, details?: Record<string, any>, onChainCode?: number) {
-    super(message);
-    this.name = 'PeerTokenError';
-    this.code = code;
-    this.details = details;
-    this.onChainCode = onChainCode;
+      return `Unknown on-chain error: ${code}`;
   }
 }
 
-// Specialized Error Classes
-export class ConnectionError extends PeerTokenError {
-  constructor(code: ErrorCode, message: string, details?: Record<string, any>) {
-    super(code, message, details);
-    this.name = 'ConnectionError';
+// Helper function to detect on-chain error codes
+function extractOnChainErrorCode(error: any): number | null {
+  // Check if error object has a code property (direct Anchor error)
+  if (error?.code && typeof error.code === 'number' && error.code >= 6000) {
+    return error.code;
   }
+  
+  // Check in logs for error numbers
+  if (error?.logs && Array.isArray(error.logs)) {
+    for (const log of error.logs) {
+      const match = log.match(/Error Number: (\d+)/);
+      if (match) {
+        const code = parseInt(match[1]);
+        if (code >= 6000) return code;
+      }
+    }
+  }
+  
+  // Check in nested error structures
+  if (error?.error?.code && typeof error.error.code === 'number' && error.error.code >= 6000) {
+    return error.error.code;
+  }
+  
+  return null;
 }
 
-export class WalletError extends PeerTokenError {
-  constructor(code: ErrorCode, message: string, details?: Record<string, any>) {
-    super(code, message, details);
-    this.name = 'WalletError';
-  }
-}
-
-export class TokenError extends PeerTokenError {
-  constructor(code: ErrorCode, message: string, details?: Record<string, any>, onChainCode?: number) {
-    super(code, message, details, onChainCode);
-    this.name = 'TokenError';
-  }
-}
-
-export class MetadataError extends PeerTokenError {
-  constructor(code: ErrorCode, message: string, details?: Record<string, any>, onChainCode?: number) {
-    super(code, message, details, onChainCode);
-    this.name = 'MetadataError';
-  }
-}
-
-export class DataError extends PeerTokenError {
-  constructor(code: ErrorCode, message: string, details?: Record<string, any>) {
-    super(code, message, details);
-    this.name = 'DataError';
-  }
-}
-
-export class TransactionError extends PeerTokenError {
-  constructor(code: ErrorCode, message: string, details?: Record<string, any>, onChainCode?: number) {
-    super(code, message, details, onChainCode);
-    this.name = 'TransactionError';
-  }
-}
-
-// Helper Error Factory Functions
+// Simple Error Factory - only the most common ones
 export const ErrorFactory = {
-  // On-chain errors
-  onChainError: (code: number | undefined, additionalDetails?: Record<string, any>) => {
-    if (code === undefined) {
-      return new TransactionError(
-        ErrorCode.TRANSACTION_FAILED,
-        "Transaction failed with unknown on-chain error",
-        additionalDetails
-      );
-    }
-    
-    const clientCode = mapOnChainErrorToClientError(code);
-    const message = getOnChainErrorMessage(code);
-    return new TransactionError(clientCode, message, { ...additionalDetails, onChainCode: code }, code);
-  },
-  
-  // Connection errors
-  connectionFailed: (message: string, details?: Record<string, any>) => 
-    new ConnectionError(ErrorCode.CONNECTION_FAILED, message, details),
-  
-  rpcError: (message: string, details?: Record<string, any>) => 
-    new ConnectionError(ErrorCode.RPC_ERROR, message, details),
-  
-  // Wallet errors
-  walletNotFound: (path: string) => 
-    new WalletError(ErrorCode.WALLET_FILE_NOT_FOUND, `Wallet file not found: ${path}`, { path }),
-  
-  invalidKeypair: (details?: Record<string, any>) => 
-    new WalletError(ErrorCode.INVALID_KEYPAIR, "Invalid keypair data", details),
-  
-  // Token errors
-  mintNotFound: (mintAddress: PublicKey) => 
-    new TokenError(ErrorCode.MINT_ACCOUNT_NOT_FOUND, `Mint account not found: ${mintAddress.toString()}`, 
-    { mintAddress: mintAddress.toString() }, OnChainErrorCode.INVALID_MINT),
-  
-  tokenAccountNotFound: (tokenAddress: PublicKey, owner: PublicKey) => 
-    new TokenError(ErrorCode.TOKEN_ACCOUNT_NOT_FOUND, `Token account not found for ${owner.toString()}`, 
-    { tokenAddress: tokenAddress.toString(), owner: owner.toString() }, OnChainErrorCode.INVALID_TOKEN_ACCOUNT),
-  
-  insufficientBalance: (tokenAddress: PublicKey, required: string, available: string) => 
-    new TokenError(ErrorCode.INSUFFICIENT_BALANCE, `Insufficient token balance`, 
-    { tokenAddress: tokenAddress.toString(), required, available }, OnChainErrorCode.INSUFFICIENT_PEER_TOKENS),
-  
-  // Data errors
-  invalidJson: (error: Error) => 
-    new DataError(ErrorCode.INVALID_JSON_FORMAT, `Invalid JSON format: ${error.message}`, { originalError: error.message }),
-  
-  missingRequiredField: (fieldName: string) => 
-    new DataError(ErrorCode.MISSING_REQUIRED_FIELD, `Missing required field: ${fieldName}`, { fieldName }),
-  
-  invalidDataStructure: (expected: string, received?: any) => 
-    new DataError(ErrorCode.INVALID_DATA_STRUCTURE, `Invalid data structure, expected ${expected}`, { expected, received }),
-  
-  // Transaction errors
-  transactionFailed: (operation: string, error: any) => {
-    // Check if this is an on-chain error
-    let onChainCode: number | undefined;
-    let errorMsg = error?.message || 'Unknown error';
-    
-    // Try to extract on-chain error code from various error formats
-    if (typeof error === 'object') {
-      // Format from Anchor error logs
-      if (error.logs && Array.isArray(error.logs)) {
-        const errorLog = error.logs.find((log: string) => log.includes('Error Number:'));
-        if (errorLog) {
-          const match = errorLog.match(/Error Number: (\d+)/);
-          if (match && match[1]) {
-            onChainCode = parseInt(match[1], 10);
-            errorMsg = getOnChainErrorMessage(onChainCode);
-          }
-        }
-      }
-      
-      // Format from error.code
-      if (error.code && typeof error.code === 'number' && error.code >= 6000 && error.code < 7000) {
-        onChainCode = error.code;
-        errorMsg = getOnChainErrorMessage(onChainCode);
-      }
-    }
-    
-    if (onChainCode !== undefined && onChainCode >= 6000 && onChainCode < 7000) {
-      return ErrorFactory.onChainError(onChainCode, { operation, originalError: error });
-    }
-    
-    return new TransactionError(
-      ErrorCode.TRANSACTION_FAILED, 
-      `Transaction failed during ${operation}: ${errorMsg}`, 
-      { operation, originalError: error }
-    );
-  },
-  
-  transactionTimeout: (signature: string) => 
-    new TransactionError(ErrorCode.TRANSACTION_TIMEOUT, `Transaction confirmation timeout`, { signature }),
+  mintNotFound: (mintAddress: PublicKey): ErrorResponse => ({
+    code: ErrorCode.MINT_NOT_FOUND,
+    message: `Mint account not found: ${mintAddress.toString()}`,
+    details: { mintAddress: mintAddress.toString() }
+  }),
+
+  tokenAccountNotFound: (tokenAddress: PublicKey, owner: PublicKey): ErrorResponse => ({
+    code: ErrorCode.TOKEN_ACCOUNT_NOT_FOUND,
+    message: `Token account not found for owner: ${owner.toString()}`,
+    details: { tokenAddress: tokenAddress.toString(), owner: owner.toString() }
+  }),
+
+  metadataNotFound: (mintAddress: PublicKey): ErrorResponse => ({
+    code: ErrorCode.METADATA_NOT_FOUND,
+    message: `Metadata account not found for mint: ${mintAddress.toString()}`,
+    details: { mintAddress: mintAddress.toString() }
+  }),
+
+  transactionFailed: (operation: string, error: any): ErrorResponse => ({
+    code: ErrorCode.TRANSACTION_FAILED,
+    message: `Transaction failed during ${operation}: ${error?.message || 'Unknown error'}`,
+    details: { operation, originalError: error?.message }
+  }),
+
+  alreadyMintedToday: (): ErrorResponse => ({
+    code: ErrorCode.ALREADY_MINTED_TODAY,
+    message: "Tokens have already been minted today. Try again tomorrow.",
+    details: null
+  }),
+
+  connectionFailed: (endpoint: string): ErrorResponse => ({
+    code: ErrorCode.CONNECTION_FAILED,
+    message: `Failed to connect to Solana RPC: ${endpoint}`,
+    details: { endpoint }
+  }),
+
+  walletNotFound: (path: string): ErrorResponse => ({
+    code: ErrorCode.WALLET_NOT_FOUND,
+    message: `Wallet file not found: ${path}`,
+    details: { path }
+  }),
 };
 
-// Error Handler class for global error handling
+// Simple Error Handler Class
 export class ErrorHandler {
-  static handle(error: any): { message: string, code: number, details?: any, onChainCode?: number } {
-    // Handle our custom error types
-    if (error instanceof PeerTokenError) {
-      console.error(`${error.name} [${error.code}${error.onChainCode ? `, on-chain: ${error.onChainCode}` : ''}]: ${error.message}`, error.details);
-      return {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        onChainCode: error.onChainCode
-      };
+  static handle(error: any): ErrorResponse {
+    // Handle our ErrorFactory responses
+    if (error && typeof error === 'object' && error.code && error.message) {
+      console.error(`Error [${error.code}]: ${error.message}`);
+      if (error.details) {
+        console.error("Details:", JSON.stringify(error.details, null, 2));
+      }
+      return error;
     }
-    
-    // Check if it's an on-chain error we can interpret
-    if (typeof error === 'object') {
-      // Try to extract on-chain error code from various error formats
-      let onChainCode: number | undefined;
+
+    // Check for on-chain error codes first
+    const onChainCode = extractOnChainErrorCode(error);
+    if (onChainCode !== null) {
+      const message = getOnChainErrorMessage(onChainCode);
       
-      // Format from Anchor error logs
-      if (error.logs && Array.isArray(error.logs)) {
-        const errorLog = error.logs.find((log: string) => log.includes('Error Number:'));
-        if (errorLog) {
-          const match = errorLog.match(/Error Number: (\d+)/);
-          if (match && match[1]) {
-            onChainCode = parseInt(match[1], 10);
-            if (onChainCode >= 6000 && onChainCode < 7000) {
-              const onChainError = ErrorFactory.onChainError(onChainCode, { originalError: error });
-              console.error(`${onChainError.name} [${onChainError.code}, on-chain: ${onChainError.onChainCode}]: ${onChainError.message}`, onChainError.details);
-              return {
-                message: onChainError.message,
-                code: onChainError.code,
-                details: onChainError.details,
-                onChainCode: onChainError.onChainCode
-              };
-            }
-          }
+      // Map specific on-chain errors to our error codes
+      let errorCode = ErrorCode.TRANSACTION_FAILED;
+      if (onChainCode === OnChainErrorCode.ALREADY_MINTED_TODAY) {
+        errorCode = ErrorCode.ALREADY_MINTED_TODAY;
+      } else if (onChainCode === OnChainErrorCode.INSUFFICIENT_PEER_TOKENS) {
+        errorCode = ErrorCode.INSUFFICIENT_BALANCE;
+      }
+      
+      const response: ErrorResponse = {
+        code: errorCode,
+        message: message,
+        onChainCode: onChainCode,
+        details: { 
+          originalError: error?.message,
+          logs: error?.logs 
         }
+      };
+      
+      console.error(`On-Chain Error [${onChainCode}]: ${message}`);
+      if (error?.logs) {
+        console.error("Transaction logs:", error.logs);
       }
       
-      // Format from error.code
-      if (error.code && typeof error.code === 'number' && error.code >= 6000 && error.code < 7000) {
-        const onChainError = ErrorFactory.onChainError(error.code, { originalError: error });
-        console.error(`${onChainError.name} [${onChainError.code}, on-chain: ${onChainError.onChainCode}]: ${onChainError.message}`, onChainError.details);
-        return {
-          message: onChainError.message,
-          code: onChainError.code,
-          details: onChainError.details,
-          onChainCode: onChainError.onChainCode
-        };
-      }
+      return response;
     }
-    
-    // Handle standard Error objects
+
+    // Handle standard Error objects with user-friendly messages
     if (error instanceof Error) {
-      console.error(`Unhandled Error: ${error.message}`, error.stack);
-      return {
-        message: error.message,
-        code: ErrorCode.UNKNOWN_ERROR
+      // Check for specific error patterns
+      const message = error.message.toLowerCase();
+      
+      if (message.includes('already minted today') || message.includes('alreadymintedtoday')) {
+        const response = ErrorFactory.alreadyMintedToday();
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      // Solana-specific error patterns with user-friendly messages
+      if (message.includes('timeout') && (message.includes('transaction') || message.includes('confirmation'))) {
+        const response = {
+          code: ErrorCode.TRANSACTION_FAILED,
+          message: "Transaction is taking longer than expected. Please try again.",
+          details: { originalError: error.message, errorType: "timeout" }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      if (message.includes('blockhash not found') || (message.includes('blockhash') && message.includes('not found'))) {
+        const response = {
+          code: ErrorCode.TRANSACTION_FAILED,
+          message: "Network is busy. Please try your transaction again.",
+          details: { originalError: error.message, errorType: "blockhash" }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      if (message.includes('insufficient funds for fee') || (message.includes('insufficient') && message.includes('fee'))) {
+        const response = {
+          code: ErrorCode.INSUFFICIENT_BALANCE,
+          message: "You don't have enough SOL to pay for this transaction. Please add some SOL to your wallet.",
+          details: { originalError: error.message, errorType: "insufficient_sol" }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      if (message.includes('out of compute budget') || message.includes('compute units')) {
+        const response = {
+          code: ErrorCode.TRANSACTION_FAILED,
+          message: "Transaction is too complex. Please try breaking it into smaller steps.",
+          details: { originalError: error.message, errorType: "compute_budget" }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      if (message.includes('mint') && message.includes('not found')) {
+        const response = {
+          code: ErrorCode.MINT_NOT_FOUND,
+          message: "The token you're trying to use doesn't exist or is invalid.",
+          details: { originalError: error.message }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      if (message.includes('token account') && message.includes('not found')) {
+        const response = {
+          code: ErrorCode.TOKEN_ACCOUNT_NOT_FOUND,
+          message: "Your wallet doesn't have an account for this token yet.",
+          details: { originalError: error.message }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      if (message.includes('metadata') && message.includes('not found')) {
+        const response = {
+          code: ErrorCode.METADATA_NOT_FOUND,
+          message: "Token information is missing or invalid.",
+          details: { originalError: error.message }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+      
+      if (message.includes('connection') || message.includes('network') || message.includes('rpc')) {
+        const response = {
+          code: ErrorCode.CONNECTION_FAILED,
+          message: "Unable to connect to the Solana network. Please check your internet connection and try again.",
+          details: { originalError: error.message }
+        };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+
+      // Default transaction failed with generic user-friendly message
+      const response = {
+        code: ErrorCode.TRANSACTION_FAILED,
+        message: "Transaction failed. Please try again or contact support if the problem persists.",
+        details: { originalError: error.message }
       };
+      console.error(`Error [${response.code}]: ${response.message}`);
+      return response;
     }
-    
+
     // Handle unknown error types
-    console.error('Unknown error type:', error);
-    return {
-      message: 'An unknown error occurred',
+    const response = {
       code: ErrorCode.UNKNOWN_ERROR,
+      message: 'An unknown error occurred',
       details: error
     };
+    console.error(`Error [${response.code}]: ${response.message}`);
+    console.error('Unknown error:', error);
+    return response;
   }
 
-  static logError(error: any): void {
-    if (error instanceof PeerTokenError) {
-      console.error(`${error.name} [${error.code}${error.onChainCode ? `, on-chain: ${error.onChainCode}` : ''}]: ${error.message}`, error.details);
-    } else if (error instanceof Error) {
-      console.error(`Error: ${error.message}`, error.stack);
-    } else {
-      console.error('Unknown error type:', error);
-    }
+  // Simple logging method
+  static log(error: any): void {
+    const errorResponse = this.handle(error);
+    // Already logged in handle method, this is just for consistency
   }
 }
 
-// Validation utilities to prevent errors
+// Simple validation helpers
 export const Validators = {
-  // Check if a value exists and is not null/undefined
   required: <T>(value: T | null | undefined, fieldName: string): T => {
     if (value === null || value === undefined) {
-      throw ErrorFactory.missingRequiredField(fieldName);
+      throw {
+        code: ErrorCode.VALIDATION_ERROR,
+        message: `Missing required field: ${fieldName}`,
+        details: { fieldName }
+      };
     }
     return value;
   },
-  
-  // Validate public key
+
   publicKey: (value: string | PublicKey, fieldName: string): PublicKey => {
     try {
       return typeof value === 'string' ? new PublicKey(value) : value;
     } catch (error) {
-      throw new PeerTokenError(
-        ErrorCode.INVALID_PARAMETER, 
-        `Invalid public key for ${fieldName}`, 
-        { value, error: (error as Error).message }
-      );
+      throw {
+        code: ErrorCode.VALIDATION_ERROR,
+        message: `Invalid public key for ${fieldName}`,
+        details: { value, fieldName }
+      };
     }
   },
-  
-  // Validate token amount (positive number)
-  tokenAmount: (amount: number | string, fieldName: string = 'amount'): number => {
+
+  positiveNumber: (amount: number | string, fieldName: string = 'amount'): number => {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
     
-    if (isNaN(numAmount)) {
-      throw new TokenError(
-        ErrorCode.INVALID_TOKEN_AMOUNT,
-        `Invalid token amount: ${amount} is not a number`,
-        { amount },
-        OnChainErrorCode.INVALID_TRANSFER_AMOUNT
-      );
-    }
-    
-    if (numAmount <= 0) {
-      throw new TokenError(
-        ErrorCode.INVALID_TOKEN_AMOUNT,
-        `Invalid token amount: ${amount} must be positive`,
-        { amount },
-        OnChainErrorCode.INSUFFICIENT_AMOUNT
-      );
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw {
+        code: ErrorCode.VALIDATION_ERROR,
+        message: `Invalid ${fieldName}: must be a positive number`,
+        details: { amount, fieldName }
+      };
     }
     
     return numAmount;

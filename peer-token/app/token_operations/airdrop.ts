@@ -14,8 +14,8 @@ import * as path from 'path';
 import { BN } from "bn.js";
 import * as dotenv from 'dotenv';
 import { TokenDistribution } from "../mockdata/distribution";
-import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utilss";
-import { ErrorHandler, ErrorFactory, ErrorCode, OnChainErrorCode, Validators } from "../errors/index";
+import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utils";
+import { ErrorHandler, ErrorFactory, ErrorCode, Validators } from "../errors";
 
 
 
@@ -96,10 +96,7 @@ export async function main(tokendata: TokenDistribution) {
 
         // let tokenData = tokendata;
         if (!tokendata?.data?.GetGemsForDay?.affectedRows?.data) {
-            throw ErrorFactory.invalidDataStructure(
-                "data.GetGemsForDay.affectedRows.data array",
-                tokendata
-            );
+            throw ErrorFactory.transactionFailed("data validation", new Error("Invalid data structure: missing data.GetGemsForDay.affectedRows.data array"));
         }
 
         console.log(`\n📊 Total distributions to process: ${tokendata.data.GetGemsForDay.affectedRows.data.length}`);
@@ -118,7 +115,7 @@ export async function main(tokendata: TokenDistribution) {
             try {
                 // Validate required fields
                 if (!distribution.userId || !distribution.walletAddress || !distribution.tokens) {
-                    throw ErrorFactory.missingRequiredField("userId, walletAddress or tokens");
+                    throw ErrorFactory.transactionFailed("validation", new Error("Missing required field: userId, walletAddress or tokens"));
                 }
                 
                 // Validate wallet address
@@ -126,7 +123,7 @@ export async function main(tokendata: TokenDistribution) {
                 try {
                     userWallet = Validators.publicKey(distribution.walletAddress, "user wallet address");
                 } catch (error) {
-                    throw new Error(`Invalid wallet address format for user ${distribution.userId}`);
+                    throw ErrorFactory.transactionFailed("validation", new Error(`Invalid wallet address format for user ${distribution.userId}`));
                 }
                 
                 // Convert token amount to proper decimal representation
@@ -182,7 +179,7 @@ export async function main(tokendata: TokenDistribution) {
 
             } catch (error) {
                 console.error(`❌ Error processing transfer for user ${distribution.userId}:`);
-                ErrorHandler.logError(error);
+                ErrorHandler.handle(error);
                 failedTransfers++;
                 // Continue with next distribution
             }
@@ -210,9 +207,7 @@ export async function main(tokendata: TokenDistribution) {
             console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
         }
         
-        if (errorDetails.onChainCode) {
-            console.error(`On-chain error code: ${errorDetails.onChainCode}`);
-        }
+
         
         throw error; // Re-throw so calling code can handle it
     }

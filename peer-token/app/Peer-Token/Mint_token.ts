@@ -7,7 +7,7 @@ import {
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
-import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utilss";
+import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utils";
 import { ErrorHandler, ErrorFactory, ErrorCode } from "../errors";
 
 dotenv.config();
@@ -70,7 +70,7 @@ async function main() {
                 console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
                 console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
             } catch (error) {
-                ErrorHandler.logError(error);
+                ErrorHandler.handle(error);
                 console.log("❌ Could not fetch detailed mint info");
             }
         } else {
@@ -115,7 +115,7 @@ async function main() {
                     console.log("🔹 Mint Authority:", tokenMintInfo.mintAuthority?.toString());
                     console.log("🔹 Freeze Authority:", tokenMintInfo.freezeAuthority?.toString());
                 } catch (error) {
-                    ErrorHandler.logError(error);
+                    ErrorHandler.handle(error);
                     console.log("❌ Could not fetch detailed mint info");
                 }
             } catch (error) {
@@ -124,17 +124,7 @@ async function main() {
         }
     } catch (error) {
         console.error("\n❌ ERROR DURING TOKEN MINT:");
-        const errorDetails = ErrorHandler.handle(error);
-        console.error(`Error code: ${errorDetails.code}, Message: ${errorDetails.message}`);
-        
-        if (errorDetails.details) {
-            console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
-        }
-        
-        if (errorDetails.onChainCode) {
-            console.error(`On-chain error code: ${errorDetails.onChainCode}`);
-        }
-        
+        ErrorHandler.handle(error);
         process.exit(1);
     }
 }

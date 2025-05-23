@@ -17,18 +17,17 @@
  * - validation-pubkey: Invalid public key format
  * - validation-amount: Invalid token amount
  * - insufficient: Insufficient token balance (on-chain)
- * - unauthorized: Unauthorized transfer (on-chain)
  * - invalid-mint: Invalid token mint address (on-chain)
- * - invalid-token-account: Invalid token account (on-chain)
- * - invalid-owner: Invalid token account owner (on-chain)
  * - invalid-mint-authority: Invalid mint authority (on-chain)
+ * - invalid-owner: Invalid token account owner (on-chain)
+ * - invalid-transfer-amount: Invalid transfer amount (on-chain)
  * - already-minted-today: Already minted tokens today (on-chain)
  * - invalid-metadata: Invalid token metadata (on-chain)
  * - invalid-decimals: Invalid token decimals (on-chain)
+ * - metadata-creation-failed: Metadata creation failed (on-chain)
  * - connection: Network connection failure
- * - rpc-error: RPC endpoint returned an error
- * - network-timeout: Network request timed out
- * - sol-timeout: Solana transaction timeout
+ * - transaction-failed: General transaction failure
+ * - sol-timeout: Solana transaction timeout  
  * - sol-compute: Compute budget exceeded
  * - sol-fee: Insufficient SOL for transaction fee
  * - sol-blockhash: Blockhash not found error
@@ -36,19 +35,16 @@
  * - all: Run all error scenarios (default)
  * - anchor: Run all Anchor custom errors
  * - client: Run all client-side errors
+ * - solana: Run all Solana-specific errors
  */
 
 import { PublicKey } from '@solana/web3.js';
 import { 
   ErrorHandler, 
   ErrorCode, 
-  OnChainErrorCode, 
+  OnChainErrorCode,
   ErrorFactory,
-  getOnChainErrorMessage as getRealOnChainErrorMessage,
-  Validators as RealValidators,
-  ConnectionError,
-  PeerTokenError,
-  TokenError
+  Validators as RealValidators
 } from './index';
 
 // ============================
@@ -71,59 +67,36 @@ enum SolanaTransactionErrorType {
 }
 
 // ============================
-// Validators
-// ============================
-
-/**
- * Input validators
- * Note: These are now replaced by using the actual Validators from ErrorHandler.ts
- * This is kept for reference but is no longer used
- */
-/* 
-const Validators = {
-  publicKey: (value: string, fieldName: string): PublicKey => {
-    try {
-      return new PublicKey(value);
-    } catch (error) {
-      throw {
-        code: ErrorCode.INVALID_PARAMETER,
-        message: `Invalid ${fieldName}: ${value} is not a valid Solana address`,
-        details: { field: fieldName, value }
-      };
-    }
-  },
-  
-  tokenAmount: (value: number, fieldName: string): number => {
-    if (isNaN(value) || value <= 0) {
-      throw {
-        code: ErrorCode.INVALID_TOKEN_AMOUNT,
-        message: `Invalid ${fieldName}: Must be a positive number`,
-        details: { field: fieldName, value }
-      };
-    }
-    return value;
-  }
-};
-*/
-
-// ============================
-// Error Factory
-// ============================
-
-/**
- * Using ErrorFactory directly from ErrorHandler.ts
- * The local wrapper has been removed for simplicity
- */
-
-// ============================
 // Helper Functions
 // ============================
 
 /**
- * Get human-readable error message for on-chain errors
+ * Helper function to get human-readable messages for on-chain errors
+ * (This duplicates the function in ErrorHandler for demo purposes)
  */
 function getOnChainErrorMessage(code: number): string {
-  return getRealOnChainErrorMessage(code);
+  switch (code) {
+    case OnChainErrorCode.INVALID_MINT:
+      return "Invalid mint address provided";
+    case OnChainErrorCode.INVALID_MINT_AUTHORITY:
+      return "Invalid mint authority";
+    case OnChainErrorCode.INVALID_OWNER:
+      return "Invalid token account owner";
+    case OnChainErrorCode.INVALID_TRANSFER_AMOUNT:
+      return "Invalid transfer amount";
+    case OnChainErrorCode.INSUFFICIENT_PEER_TOKENS:
+      return "Insufficient PEER token balance";
+    case OnChainErrorCode.ALREADY_MINTED_TODAY:
+      return "Already minted tokens today";
+    case OnChainErrorCode.INVALID_TOKEN_DECIMALS:
+      return "Invalid token decimals";
+    case OnChainErrorCode.INVALID_TOKEN_METADATA:
+      return "Invalid token metadata";
+    case OnChainErrorCode.METADATA_CREATION_FAILED:
+      return "Failed to create token metadata";
+    default:
+      return `Unknown on-chain error: ${code}`;
+  }
 }
 
 /**
@@ -147,38 +120,19 @@ function createMockOnChainError(errorCode: number = OnChainErrorCode.INSUFFICIEN
 function createMockSolanaError(errorType: SolanaTransactionErrorType): any {
   switch (errorType) {
     case SolanaTransactionErrorType.TIMEOUT:
-      return {
-        message: "Transaction confirmation timeout",
-        timeout: true
-      };
+      return new Error("Transaction confirmation timeout");
       
     case SolanaTransactionErrorType.BLOCKHASH_NOT_FOUND:
-      return {
-        message: "Blockhash not found",
-        code: "BlockhashNotFound"
-      };
+      return new Error("Blockhash not found");
       
     case SolanaTransactionErrorType.OUT_OF_COMPUTE_BUDGET:
-      return {
-        message: "Transaction simulation failed: Error processing Instruction 0: Program failed to complete",
-        logs: [
-          "Program log: Instruction: TransferTokens",
-          "Program log: Out of compute budget",
-          "Program exceeded maximum compute units"
-        ]
-      };
+      return new Error("Transaction simulation failed: out of compute budget");
       
     case SolanaTransactionErrorType.INSUFFICIENT_FUNDS:
-      return {
-        message: "Transaction simulation failed: Insufficient funds for fee",
-        logs: ["Insufficient funds for fee"]
-      };
+      return new Error("Transaction simulation failed: Insufficient funds for fee");
       
     default:
-      return {
-        message: "Unknown Solana error",
-        logs: ["Unknown error"]
-      };
+      return new Error("Unknown Solana error");
   }
 }
 
@@ -213,7 +167,7 @@ async function mockTokenTransfer(
       } catch (error) {
         // All validation errors through ErrorFactory
         throw ErrorFactory.transactionFailed("input validation", {
-          code: ErrorCode.INVALID_PARAMETER,
+          code: ErrorCode.VALIDATION_ERROR,
           message: `Invalid sender wallet: ${fromWallet} is not a valid Solana address`,
           details: { field: "sender wallet", value: fromWallet }
         });
@@ -224,7 +178,7 @@ async function mockTokenTransfer(
       } catch (error) {
         // All validation errors through ErrorFactory
         throw ErrorFactory.transactionFailed("input validation", {
-          code: ErrorCode.INVALID_PARAMETER,
+          code: ErrorCode.VALIDATION_ERROR,
           message: `Invalid recipient wallet: ${toWallet} is not a valid Solana address`,
           details: { field: "recipient wallet", value: toWallet }
         });
@@ -233,16 +187,16 @@ async function mockTokenTransfer(
       // Use the real validator for amount
       let validAmount: number;
       try {
-        validAmount = RealValidators.tokenAmount(amount, "transfer amount");
+        validAmount = RealValidators.positiveNumber(amount, "transfer amount");
       } catch (error) {
-        // Simply pass through the TokenError created by the validator
+        // Simply pass through the validation error created by the validator
         throw error;
       }
       
       // Check if sender and recipient are the same
       if (sender.equals(recipient)) {
         throw ErrorFactory.transactionFailed("input validation", {
-          code: ErrorCode.INVALID_PARAMETER,
+          code: ErrorCode.VALIDATION_ERROR,
           message: "Sender and recipient cannot be the same",
           details: { 
             sender: sender.toString(),
@@ -264,18 +218,9 @@ async function mockTokenTransfer(
       // Simulate client-side errors
       if (simulateError.type === 'client') {
         if (simulateError.code === ErrorCode.CONNECTION_FAILED) {
-          throw ErrorFactory.connectionFailed("Failed to connect to Solana network");
-        } else if (simulateError.code === ErrorCode.RPC_ERROR) {
-          throw ErrorFactory.rpcError("RPC endpoint returned an error", { 
-            endpoint: "https://api.mainnet-beta.solana.com", 
-            timestamp: new Date().toISOString() 
-          });
-        } else if (simulateError.code === ErrorCode.NETWORK_TIMEOUT) {
-          throw ErrorFactory.transactionFailed("network request", {
-            code: ErrorCode.NETWORK_TIMEOUT,
-            message: "Network request timed out",
-            details: { timeout: 30000, operation: "getRecentBlockhash" }
-          });
+          throw ErrorFactory.connectionFailed("https://api.mainnet-beta.solana.com");
+        } else if (simulateError.code === ErrorCode.TRANSACTION_FAILED) {
+          throw ErrorFactory.transactionFailed("network request", new Error("Network request timed out"));
         }
       }
       
@@ -283,13 +228,13 @@ async function mockTokenTransfer(
       if (simulateError.type === 'on-chain') {
         // Create a mock on-chain error response
         const mockOnChainError = createMockOnChainError(simulateError.code);
-        throw ErrorFactory.transactionFailed("token transfer", mockOnChainError);
+        throw mockOnChainError; // Throw the error directly so ErrorHandler can process it
       }
       
       // Simulate Solana transaction errors
       if (simulateError.type === 'solana' && simulateError.solanaErrorType) {
         const solanaError = createMockSolanaError(simulateError.solanaErrorType);
-        throw ErrorFactory.transactionFailed("token transfer", solanaError);
+        throw solanaError; // Throw the error directly so ErrorHandler can process it
       }
     }
     
@@ -324,8 +269,11 @@ async function demonstrateAllErrors() {
     await mockTokenTransfer("not-a-valid-pubkey", validPubkey2, 100);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
   // 2. Client-side validation error - negative amount
@@ -334,8 +282,11 @@ async function demonstrateAllErrors() {
     await mockTokenTransfer(validPubkey1, validPubkey2, -50);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
   // 3. Client-side validation error - zero amount
@@ -344,8 +295,11 @@ async function demonstrateAllErrors() {
     await mockTokenTransfer(validPubkey1, validPubkey2, 0);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
   // 4. On-chain error - insufficient balance
@@ -359,72 +313,33 @@ async function demonstrateAllErrors() {
     );
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain code: ${errorInfo.onChainCode}, Details:`, errorInfo.details);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
+    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
-  // 5. On-chain error - unauthorized transfer
-  console.log("\n📋 SCENARIO 5: On-chain error (Unauthorized transfer)");
+  // 5. On-chain error - invalid mint authority
+  console.log("\n📋 SCENARIO 5: On-chain error (Invalid mint authority)");
   try {
     await mockTokenTransfer(
       validPubkey1, 
       validPubkey2, 
       100, 
-      { type: 'on-chain', code: OnChainErrorCode.UNAUTHORIZED_TRANSFER }
+      { type: 'on-chain', code: OnChainErrorCode.INVALID_MINT_AUTHORITY }
     );
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain code: ${errorInfo.onChainCode}, Details:`, errorInfo.details);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
+    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
-  // 6. On-chain error - invalid mint
-  console.log("\n📋 SCENARIO 6: On-chain error (Invalid mint)");
-  try {
-    await mockTokenTransfer(
-      validPubkey1, 
-      validPubkey2, 
-      100, 
-      { type: 'on-chain', code: OnChainErrorCode.INVALID_MINT }
-    );
-  } catch (error) {
-    const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain code: ${errorInfo.onChainCode}, Details:`, errorInfo.details);
-  }
-  
-  // 7. On-chain error - invalid token account
-  console.log("\n📋 SCENARIO 7: On-chain error (Invalid token account)");
-  try {
-    await mockTokenTransfer(
-      validPubkey1, 
-      validPubkey2, 
-      100, 
-      { type: 'on-chain', code: OnChainErrorCode.INVALID_TOKEN_ACCOUNT }
-    );
-  } catch (error) {
-    const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain code: ${errorInfo.onChainCode}, Details:`, errorInfo.details);
-  }
-  
-  // 8. On-chain error - invalid owner
-  console.log("\n📋 SCENARIO 8: On-chain error (Invalid owner)");
-  try {
-    await mockTokenTransfer(
-      validPubkey1, 
-      validPubkey2, 
-      100, 
-      { type: 'on-chain', code: OnChainErrorCode.INVALID_OWNER }
-    );
-  } catch (error) {
-    const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain code: ${errorInfo.onChainCode}, Details:`, errorInfo.details);
-  }
-  
-  // 9. On-chain error - already minted today
-  console.log("\n📋 SCENARIO 9: On-chain error (Already minted today)");
+  // 6. On-chain error - already minted today
+  console.log("\n📋 SCENARIO 6: On-chain error (Already minted today)");
   try {
     await mockTokenTransfer(
       validPubkey1, 
@@ -434,27 +349,15 @@ async function demonstrateAllErrors() {
     );
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain code: ${errorInfo.onChainCode}, Details:`, errorInfo.details);
-  }
-  
-  // 10. Client infrastructure error - connection failed
-  console.log("\n📋 SCENARIO 10: Client infrastructure error (Connection failed)");
-  try {
-    await mockTokenTransfer(
-      validPubkey1, 
-      validPubkey2, 
-      100, 
-      { type: 'client', code: ErrorCode.CONNECTION_FAILED }
-    );
-  } catch (error) {
-    const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
-  // 11. Solana transaction error - timeout
-  console.log("\n📋 SCENARIO 11: Solana transaction error (Timeout)");
+  // 7. Solana error - timeout
+  console.log("\n📋 SCENARIO 7: Solana error (Transaction timeout)");
   try {
     await mockTokenTransfer(
       validPubkey1, 
@@ -464,12 +367,15 @@ async function demonstrateAllErrors() {
     );
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
-  // 12. Solana transaction error - insufficient SOL for fee
-  console.log("\n📋 SCENARIO 12: Solana transaction error (Insufficient SOL for fee)");
+  // 8. Solana error - insufficient SOL for fee
+  console.log("\n📋 SCENARIO 8: Solana error (Insufficient SOL for fee)");
   try {
     await mockTokenTransfer(
       validPubkey1, 
@@ -479,12 +385,15 @@ async function demonstrateAllErrors() {
     );
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
-  // 13. Solana transaction error - compute budget exceeded
-  console.log("\n📋 SCENARIO 13: Solana transaction error (Compute budget exceeded)");
+  // 9. Solana error - compute budget exceeded
+  console.log("\n📋 SCENARIO 9: Solana error (Compute budget exceeded)");
   try {
     await mockTokenTransfer(
       validPubkey1, 
@@ -494,18 +403,57 @@ async function demonstrateAllErrors() {
     );
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
   }
   
-  // 14. Successful transfer
-  console.log("\n📋 SCENARIO 14: Successful transfer");
+  // 10. Solana error - blockhash not found
+  console.log("\n📋 SCENARIO 10: Solana error (Blockhash not found)");
+  try {
+    await mockTokenTransfer(
+      validPubkey1, 
+      validPubkey2, 
+      100, 
+      { type: 'solana', solanaErrorType: SolanaTransactionErrorType.BLOCKHASH_NOT_FOUND }
+    );
+  } catch (error) {
+    const errorInfo = ErrorHandler.handle(error);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
+    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
+  }
+  
+  // 11. Connection error
+  console.log("\n📋 SCENARIO 11: Connection error");
+  try {
+    await mockTokenTransfer(
+      validPubkey1, 
+      validPubkey2, 
+      100, 
+      { type: 'client', code: ErrorCode.CONNECTION_FAILED }
+    );
+  } catch (error) {
+    const errorInfo = ErrorHandler.handle(error);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
+    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
+    if (errorInfo.onChainCode) {
+      console.log(`🔧 ON-CHAIN CODE: ${errorInfo.onChainCode}`);
+    }
+  }
+  
+  // 12. Successful transfer
+  console.log("\n📋 SCENARIO 12: Successful transfer");
   try {
     const signature = await mockTokenTransfer(validPubkey1, validPubkey2, 100);
     console.log(`📣 USER SEES: Transfer successful! Transaction: ${signature}`);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
   }
 }
 
@@ -520,26 +468,15 @@ async function demonstrateAnchorErrors() {
   
   // Test all on-chain errors
   const anchorErrors = [
-    { code: OnChainErrorCode.INVALID_AUTHORITY, name: "Invalid Authority" },
     { code: OnChainErrorCode.INVALID_MINT, name: "Invalid Mint" },
-    { code: OnChainErrorCode.INVALID_TOKEN_ACCOUNT, name: "Invalid Token Account" },
-    { code: OnChainErrorCode.INSUFFICIENT_PEER_TOKENS, name: "Insufficient Peer Tokens" },
-    { code: OnChainErrorCode.DAILY_MINT_LIMIT_EXCEEDED, name: "Daily Mint Limit Exceeded" },
-    { code: OnChainErrorCode.TOO_EARLY_FOR_DAILY_MINT, name: "Too Early For Daily Mint" },
+    { code: OnChainErrorCode.INVALID_MINT_AUTHORITY, name: "Invalid Mint Authority" },
+    { code: OnChainErrorCode.INVALID_OWNER, name: "Invalid Owner" },
     { code: OnChainErrorCode.INVALID_TRANSFER_AMOUNT, name: "Invalid Transfer Amount" },
-    { code: OnChainErrorCode.METADATA_CREATION_FAILED, name: "Metadata Creation Failed" },
-    { code: OnChainErrorCode.UNAUTHORIZED_TRANSFER, name: "Unauthorized Transfer" },
+    { code: OnChainErrorCode.INSUFFICIENT_PEER_TOKENS, name: "Insufficient Peer Tokens" },
+    { code: OnChainErrorCode.ALREADY_MINTED_TODAY, name: "Already Minted Today" },
     { code: OnChainErrorCode.INVALID_TOKEN_DECIMALS, name: "Invalid Token Decimals" },
     { code: OnChainErrorCode.INVALID_TOKEN_METADATA, name: "Invalid Token Metadata" },
-    { code: OnChainErrorCode.INVALID_OWNER, name: "Invalid Owner" },
-    { code: OnChainErrorCode.INVALID_TOKEN_ACCOUNT_INIT, name: "Invalid Token Account Init" },
-    { code: OnChainErrorCode.INVALID_METADATA_ACCOUNT, name: "Invalid Metadata Account" },
-    { code: OnChainErrorCode.INVALID_MINT_AUTHORITY, name: "Invalid Mint Authority" },
-    { code: OnChainErrorCode.INVALID_FREEZE_AUTHORITY, name: "Invalid Freeze Authority" },
-    { code: OnChainErrorCode.INVALID_ASSOCIATED_TOKEN_ACCOUNT, name: "Invalid Associated Token Account" },
-    { code: OnChainErrorCode.ALREADY_MINTED_TODAY, name: "Already Minted Today" },
-    { code: OnChainErrorCode.INVALID_PEER_TOKEN_ACCOUNT, name: "Invalid Peer Token Account" },
-    { code: OnChainErrorCode.INSUFFICIENT_AMOUNT, name: "Insufficient Amount" }
+    { code: OnChainErrorCode.METADATA_CREATION_FAILED, name: "Metadata Creation Failed" }
   ];
   
   for (const err of anchorErrors) {
@@ -553,8 +490,41 @@ async function demonstrateAnchorErrors() {
       );
     } catch (error) {
       const errorInfo = ErrorHandler.handle(error);
-      console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-      console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain code: ${errorInfo.onChainCode}, Details:`, errorInfo.details);
+      console.log(`📣 USER SEES: ${errorInfo.message}`);
+      console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, On-chain: ${errorInfo.onChainCode}`);
+    }
+  }
+}
+
+/**
+ * Demonstrate all Solana-specific errors
+ */
+async function demonstrateSolanaErrors() {
+  const validPubkey1 = "HYEWs3HBPYrZx7NLq5V1mNyUR2nNgBjQRLnrMX1j1TJJ";
+  const validPubkey2 = "9JXq6CGU7J8J5TXt1rYQMJMpNbZ9TG4G8MSvvMwxgKv9";
+  
+  console.log("========== SOLANA-SPECIFIC ERROR DEMONSTRATION ==========");
+  
+  const solanaErrors = [
+    { type: SolanaTransactionErrorType.TIMEOUT, name: "Transaction Timeout" },
+    { type: SolanaTransactionErrorType.BLOCKHASH_NOT_FOUND, name: "Blockhash Not Found" },
+    { type: SolanaTransactionErrorType.OUT_OF_COMPUTE_BUDGET, name: "Out of Compute Budget" },
+    { type: SolanaTransactionErrorType.INSUFFICIENT_FUNDS, name: "Insufficient SOL for Fee" }
+  ];
+  
+  for (const err of solanaErrors) {
+    console.log(`\n📋 TESTING SOLANA ERROR: ${err.name}`);
+    try {
+      await mockTokenTransfer(
+        validPubkey1, 
+        validPubkey2, 
+        100, 
+        { type: 'solana', solanaErrorType: err.type }
+      );
+    } catch (error) {
+      const errorInfo = ErrorHandler.handle(error);
+      console.log(`📣 USER SEES: ${errorInfo.message}`);
+      console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Error type: ${errorInfo.details?.errorType || 'N/A'}`);
     }
   }
 }
@@ -574,7 +544,7 @@ async function demonstrateClientErrors() {
     await mockTokenTransfer("not-a-valid-pubkey", validPubkey2, 100);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
   }
   
@@ -584,7 +554,7 @@ async function demonstrateClientErrors() {
     await mockTokenTransfer(validPubkey1, validPubkey2, -100);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
   }
   
@@ -594,7 +564,7 @@ async function demonstrateClientErrors() {
     await mockTokenTransfer(validPubkey1, validPubkey2, 0);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
   }
   
@@ -604,7 +574,7 @@ async function demonstrateClientErrors() {
     await mockTokenTransfer(validPubkey1, validPubkey1, 100);
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
   }
   
@@ -619,37 +589,7 @@ async function demonstrateClientErrors() {
     );
   } catch (error) {
     const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
-  }
-  
-  // 6. RPC error
-  console.log("\n📋 CLIENT ERROR: RPC Error");
-  try {
-    await mockTokenTransfer(
-      validPubkey1, 
-      validPubkey2, 
-      100, 
-      { type: 'client', code: ErrorCode.RPC_ERROR }
-    );
-  } catch (error) {
-    const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
-    console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
-  }
-  
-  // 7. Network timeout
-  console.log("\n📋 CLIENT ERROR: Network Timeout");
-  try {
-    await mockTokenTransfer(
-      validPubkey1, 
-      validPubkey2, 
-      100, 
-      { type: 'client', code: ErrorCode.NETWORK_TIMEOUT }
-    );
-  } catch (error) {
-    const errorInfo = ErrorHandler.handle(error);
-    console.log(`📣 USER SEES: Error: ${errorInfo.message}`);
+    console.log(`📣 USER SEES: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER SEES: Error code: ${errorInfo.code}, Details:`, errorInfo.details);
   }
 }
@@ -690,13 +630,13 @@ async function runScript() {
         );
         break;
         
-      case 'unauthorized':
-        // Test on-chain error - unauthorized transfer
+      case 'invalid-mint-authority':
+        // Test on-chain error - invalid mint authority
         await mockTokenTransfer(
           validPubkey1, 
           validPubkey2, 
           100, 
-          { type: 'on-chain', code: OnChainErrorCode.UNAUTHORIZED_TRANSFER }
+          { type: 'on-chain', code: OnChainErrorCode.INVALID_MINT_AUTHORITY }
         );
         break;
         
@@ -710,13 +650,13 @@ async function runScript() {
         );
         break;
         
-      case 'invalid-token-account':
-        // Test on-chain error - invalid token account
+      case 'invalid-transfer-amount':
+        // Test on-chain error - invalid transfer amount
         await mockTokenTransfer(
           validPubkey1, 
           validPubkey2, 
           100, 
-          { type: 'on-chain', code: OnChainErrorCode.INVALID_TOKEN_ACCOUNT }
+          { type: 'on-chain', code: OnChainErrorCode.INVALID_TRANSFER_AMOUNT }
         );
         break;
         
@@ -727,16 +667,6 @@ async function runScript() {
           validPubkey2, 
           100, 
           { type: 'on-chain', code: OnChainErrorCode.INVALID_OWNER }
-        );
-        break;
-        
-      case 'invalid-mint-authority':
-        // Test on-chain error - invalid mint authority
-        await mockTokenTransfer(
-          validPubkey1, 
-          validPubkey2, 
-          100, 
-          { type: 'on-chain', code: OnChainErrorCode.INVALID_MINT_AUTHORITY }
         );
         break;
         
@@ -770,6 +700,16 @@ async function runScript() {
         );
         break;
         
+      case 'metadata-creation-failed':
+        // Test on-chain error - metadata creation failed
+        await mockTokenTransfer(
+          validPubkey1, 
+          validPubkey2, 
+          100, 
+          { type: 'on-chain', code: OnChainErrorCode.METADATA_CREATION_FAILED }
+        );
+        break;
+        
       case 'connection':
         // Test client error - connection failed
         await mockTokenTransfer(
@@ -780,23 +720,13 @@ async function runScript() {
         );
         break;
         
-      case 'rpc-error':
-        // Test client error - RPC error
+      case 'transaction-failed':
+        // Test client error - transaction failed
         await mockTokenTransfer(
           validPubkey1, 
           validPubkey2, 
           100, 
-          { type: 'client', code: ErrorCode.RPC_ERROR }
-        );
-        break;
-        
-      case 'network-timeout':
-        // Test client error - network timeout
-        await mockTokenTransfer(
-          validPubkey1, 
-          validPubkey2, 
-          100, 
-          { type: 'client', code: ErrorCode.NETWORK_TIMEOUT }
+          { type: 'client', code: ErrorCode.TRANSACTION_FAILED }
         );
         break;
         
@@ -862,6 +792,11 @@ async function runScript() {
         await demonstrateClientErrors();
         return;
         
+      case 'solana':
+        // Run all Solana-specific errors
+        await demonstrateSolanaErrors();
+        return;
+        
       default:
         console.log(`❌ Unknown error type: ${errorType}`);
         console.log(`
@@ -872,19 +807,18 @@ Available error types:
 
 - On-chain errors:
   • insufficient: Insufficient token balance
-  • unauthorized: Unauthorized transfer
   • invalid-mint: Invalid token mint address
-  • invalid-token-account: Invalid token account
-  • invalid-owner: Invalid token account owner
   • invalid-mint-authority: Invalid mint authority
+  • invalid-owner: Invalid token account owner
+  • invalid-transfer-amount: Invalid transfer amount
   • already-minted-today: Already minted tokens today
   • invalid-metadata: Invalid token metadata
   • invalid-decimals: Invalid token decimals
+  • metadata-creation-failed: Metadata creation failed
 
-- Network/RPC errors:
+- Network/Client errors:
   • connection: Network connection failure
-  • rpc-error: RPC endpoint returned an error
-  • network-timeout: Network request timed out
+  • transaction-failed: General transaction failure
 
 - Solana transaction errors:
   • sol-timeout: Solana transaction timeout
@@ -897,6 +831,7 @@ Available error types:
   • all: Run all error scenarios (default)
   • anchor: Run all Anchor custom errors
   • client: Run all client-side errors
+  • solana: Run all Solana-specific errors
 `);
         return;
     }
@@ -905,12 +840,12 @@ Available error types:
     const errorInfo = ErrorHandler.handle(error);
     
     console.log("\n📊 ERROR DETAILS:");
-    console.log(`📣 USER WOULD SEE: Error: ${errorInfo.message}`);
+    console.log(`📣 USER WOULD SEE: ${errorInfo.message}`);
     console.log(`🔍 DEVELOPER INFO:`);
     console.log(`  - Error code: ${errorInfo.code}`);
     
     if (errorInfo.onChainCode) {
-      console.log(`  - On-chain code: ${errorInfo.onChainCode}`);
+      console.log(`  - On-chain error code: ${errorInfo.onChainCode}`);
     }
     
     if (errorInfo.details) {
@@ -929,19 +864,22 @@ runScript()
 // ============================
 
 /**
- * This demo script demonstrates the centralized error handling approach:
+ * This demo script demonstrates the enhanced error handling approach:
  * 
  * For creating/throwing errors:
  * 1. Use Validators for input validation (they throw appropriate error objects)
  * 2. Use ErrorFactory methods for all other error creation
+ * 3. Throw raw errors directly for on-chain and Solana errors (let ErrorHandler process them)
  * 
  * For handling/processing errors:
  * 1. Use ErrorHandler.handle() to process all caught errors 
- * 2. This provides a consistent format for displaying errors to users
+ * 2. This provides a consistent format with user-friendly messages
+ * 3. Access onChainCode for specific on-chain error handling
  * 
  * This approach ensures:
  * - All errors across the codebase are created consistently
- * - All errors are processed consistently
- * - Users see meaningful error messages
- * - Developers have access to detailed error information
+ * - All errors are processed consistently with user-friendly messages
+ * - Users see meaningful, actionable error messages instead of technical jargon
+ * - Developers have access to detailed error information including on-chain codes
+ * - On-chain errors are properly detected and mapped to appropriate client error codes
  */ 

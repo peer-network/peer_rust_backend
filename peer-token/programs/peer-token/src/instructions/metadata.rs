@@ -23,11 +23,14 @@ pub fn handler(
     // Validate token decimals
     require!(token_decimals > 0, PeerTokenError::InvalidTokenDecimals);
     
-    // Validate token name
+    // Validate token name (should not be empty)
     require!(!token_name.is_empty(), PeerTokenError::InvalidTokenMetadata);
     
-    // Validate token symbol
+    // Validate token symbol (should not be empty)
     require!(!token_symbol.is_empty(), PeerTokenError::InvalidTokenMetadata);
+    
+    // Validate token URI (should not be empty)
+    require!(!token_uri.is_empty(), PeerTokenError::InvalidTokenMetadata);
     
     msg!("Creating metadata for FUNGIBLE Token-2022 token: {}", token_name);
     msg!("Metadata account address: {}", &ctx.accounts.metadata_account.key());

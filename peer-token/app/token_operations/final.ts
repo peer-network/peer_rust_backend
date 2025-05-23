@@ -12,9 +12,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { BN } from "bn.js";
 // import * as dotenv from 'dotenv';
-import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl, getTokenDecimals, getDailyMintAmount } from "../../utilss";
+import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl, getTokenDecimals, getDailyMintAmount } from "../../utils";
 import { tokenDistribution } from "../mockdata/distribution";
-import { ErrorHandler, ErrorFactory, ErrorCode, OnChainErrorCode, Validators } from "../errors/index";
+import { ErrorHandler, ErrorFactory, ErrorCode, Validators } from "../errors";
 
 
 // Load environment variables
@@ -92,12 +92,15 @@ async function mintToCompany(
     } catch (error) {
         const errorInfo = ErrorHandler.handle(error);
         
-        // Check if it's the "already minted today" error
-        if (errorInfo.onChainCode === OnChainErrorCode.ALREADY_MINTED_TODAY) {
+        // Business logic: "Already minted today" is not a failure condition
+        // It means we can proceed with distribution
+        if (errorInfo.code === ErrorCode.ALREADY_MINTED_TODAY) {
             console.log("ℹ️ Tokens have already been minted today. Proceeding with distribution.");
-        } else {
-            throw ErrorFactory.transactionFailed("daily token mint", error);
+            return; // Continue with the process
         }
+        
+        // All other errors are genuine failures
+        throw error; // Re-throw the original error, already handled by ErrorHandler
     }
 }
 
@@ -160,7 +163,7 @@ async function createUserTokenAccounts(
             }
         } catch (error) {
             console.error(`❌ Error creating token account for ${distribution.userId}:`);
-            ErrorHandler.logError(error);
+            ErrorHandler.handle(error);
             failedCreations++;
         }
     }
@@ -207,7 +210,7 @@ async function distributeTokens(
         try {
             // Validate required fields
             if (!distribution.userId || !distribution.walletAddress || !distribution.tokens) {
-                throw ErrorFactory.missingRequiredField("userId, walletAddress or tokens");
+                throw ErrorFactory.transactionFailed("validation", new Error("Missing required field: userId, walletAddress or tokens"));
             }
             
             // Validate wallet address
@@ -267,7 +270,7 @@ async function distributeTokens(
             totalTokensDistributed += tokens;
         } catch (error) {
             console.error(`❌ Error processing transfer for user ${distribution.userId}:`);
-            ErrorHandler.logError(error);
+            ErrorHandler.handle(error);
             failedTransfers++;
         }
     }
@@ -340,7 +343,7 @@ async function main() {
                 distributionData = JSON.parse(fs.readFileSync(distributionPath, 'utf8'));
             } catch (error) {
                 if (error instanceof SyntaxError) {
-                    throw ErrorFactory.invalidJson(error);
+                    throw ErrorFactory.transactionFailed("JSON parsing", error);
                 }
                 throw error;
             }
@@ -352,10 +355,7 @@ async function main() {
         // Validate distribution data
         if (!distributionData?.data?.GetGemsForDay?.affectedRows?.data || 
             !Array.isArray(distributionData.data.GetGemsForDay.affectedRows.data)) {
-            throw ErrorFactory.invalidDataStructure(
-                "data.GetGemsForDay.affectedRows.data array", 
-                distributionData
-            );
+            throw ErrorFactory.transactionFailed("data validation", new Error("Invalid data structure: missing data.GetGemsForDay.affectedRows.data array"));
         }
 
         const distributions = distributionData.data.GetGemsForDay.affectedRows.data;
@@ -377,10 +377,6 @@ async function main() {
         
         if (errorDetails.details) {
             console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
-        }
-        
-        if (errorDetails.onChainCode) {
-            console.error(`On-chain error code: ${errorDetails.onChainCode}`);
         }
         
         process.exit(1);

@@ -5,6 +5,9 @@ use chrono::{DateTime, Utc};
 use crate::error::PeerTokenError;
 
 pub fn handler(ctx: Context<DailyMintArgs>, amount: u64) -> Result<()> {
+    // Validate amount
+    require!(amount > 0, PeerTokenError::InvalidTransferAmount);
+    
     // Get current time
     let current_time = Clock::get()?.unix_timestamp;
     

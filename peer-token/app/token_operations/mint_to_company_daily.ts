@@ -8,7 +8,8 @@ import {
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
-import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utilss";
+import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utils";
+import { ErrorHandler } from "../errors";
 
 // Define local interfaces instead of importing from external module
 export enum Status {
@@ -196,28 +197,21 @@ export async function mint(): Promise<MintResponseImpl> {
                 );
             }
             
+            const errorDetails = ErrorHandler.handle(error);
             return MintResponseImpl.error(
                 ERROR_CODES.TRANSACTION_FAILED,
-                "Transaction failed with unknown error"
+                "Transaction failed with unknown error",
+                errorDetails
             );
         }
     } catch (e) {
-        const error = e as Error;
-        console.error("\n❌ ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-            
-            return MintResponseImpl.error(
-                ERROR_CODES.UNDEFINED_ERROR,
-                `Unexpected error: ${error.message}`,
-                { stack: error.stack }
-            );
-        }
+        console.error("\n❌ ERROR:");
+        const errorDetails = ErrorHandler.handle(e);
         
         return MintResponseImpl.error(
             ERROR_CODES.UNDEFINED_ERROR,
-            "Undefined error occurred"
+            `Unexpected error: ${errorDetails.message}`,
+            errorDetails.details
         );
     }
 }

@@ -1,5 +1,13 @@
 import { main  } from "./airdrop";
 import { tokenDistribution } from "../mockdata/distribution";
+import { ErrorHandler } from "../errors";
+
 (async () => {
-    await main( tokenDistribution);
-  })();
+    try {
+        await main( tokenDistribution);
+    } catch (error) {
+        console.error("❌ Error in run script:");
+        ErrorHandler.handle(error);
+        process.exit(1);
+    }
+})();

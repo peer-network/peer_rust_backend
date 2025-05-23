@@ -8,6 +8,7 @@ import {
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
+import { ErrorHandler } from "../errors";
 
 dotenv.config();
 
@@ -125,8 +126,8 @@ async function main() {
                 console.log("🔹 Owner Program:", verifyAtaInfo.owner.toString());
             }
         } catch (error) {
-            console.error("❌ Error creating company token account:", error);
-            if (error instanceof Error) console.error(error.message);
+            console.error("❌ Error creating company token account:");
+            ErrorHandler.handle(error);
         }
 
         console.log("\n📝 IMPORTANT NOTES:");
@@ -136,11 +137,8 @@ async function main() {
         console.log("4. The account is automatically linked to the mint");
         console.log("5. No PDAs are used - this is a standard Solana ATA");
     } catch (error) {
-        console.error("\n❌ ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-        }
+        console.error("\n❌ ERROR:");
+        ErrorHandler.handle(error);
     }
 }
 

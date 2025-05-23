@@ -12,7 +12,7 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 
 import { tokenDistribution } from "../mockdata/distribution";
-import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utilss";
+import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utils";
 import { ErrorHandler, ErrorFactory, ErrorCode, OnChainErrorCode, Validators } from "../errors/index";
 
 
