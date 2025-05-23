@@ -92,7 +92,11 @@ export async function main() {
         try {
             
             if (!tokenDistribution.data?.GetGemsForDay?.affectedRows?.data) {
-                throw ErrorFactory.invalidDataStructure("data.GetGemsForDay.affectedRows.data", tokenDistribution);
+                throw {
+                    code: ErrorCode.VALIDATION_ERROR,
+                    message: "Invalid data structure: missing or invalid field 'data.GetGemsForDay.affectedRows.data'",
+                    details: { fieldPath: "data.GetGemsForDay.affectedRows.data", data: tokenDistribution }
+                };
             }
             
             // const users = tokenDistribution.data.GetGemsForDay.affectedRows.data.filter(user => user.userId && user.walletAddress);
@@ -142,7 +146,7 @@ export async function main() {
                             console.log(`💰 Token Balance: ${tokenAccount.amount}`);
                         } catch (error) {
                             console.log("❌ Could not fetch token balance");
-                            ErrorHandler.logError(error);
+                            ErrorHandler.handle(error);
                         }
                         
                         successfulCreations++;
@@ -182,13 +186,13 @@ export async function main() {
                             }
                         } catch (error) {
                             console.error("❌ Error creating user token account:");
-                            ErrorHandler.logError(error);
+                            ErrorHandler.handle(error);
                             failedCreations++;
                         }
                     }
                 } catch (error) {
                     console.error(`❌ Error processing user ${user.userId}:`);
-                    ErrorHandler.logError(error);
+                    ErrorHandler.handle(error);
                     failedCreations++;
                     continue;
                 }
@@ -200,7 +204,11 @@ export async function main() {
             
         } catch (error) {
             if (error instanceof SyntaxError) {
-                throw ErrorFactory.invalidJson(error);
+                throw {
+                    code: ErrorCode.VALIDATION_ERROR,
+                    message: `Invalid JSON format: ${error.message}`,
+                    details: { originalError: error.message }
+                };
             }
             throw error;
         }
