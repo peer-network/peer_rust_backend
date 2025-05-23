@@ -2,8 +2,12 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface};
 use anchor_spl::token_2022::MintTo;
 use chrono::{DateTime, Utc};
+use crate::error::PeerTokenError;
 
 pub fn handler(ctx: Context<DailyMintArgs>, amount: u64) -> Result<()> {
+    // Validate amount
+    require!(amount > 0, PeerTokenError::InvalidTransferAmount);
+    
     // Get current time
     let current_time = Clock::get()?.unix_timestamp;
     
@@ -21,7 +25,7 @@ pub fn handler(ctx: Context<DailyMintArgs>, amount: u64) -> Result<()> {
     // Check if we've already minted today
     require!(
         last_mint_date < current_date,
-        DailyMintError::AlreadyMintedToday
+        PeerTokenError::AlreadyMintedToday
     );
 
     // Update last mint timestamp
@@ -48,11 +52,18 @@ pub fn handler(ctx: Context<DailyMintArgs>, amount: u64) -> Result<()> {
 #[derive(Accounts)]
 pub struct DailyMintArgs<'info> {
     /// The token mint
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = peer_mint.mint_authority.unwrap() == peer_authority.key() @ PeerTokenError::InvalidMintAuthority
+    )]
     pub peer_mint: InterfaceAccount<'info, Mint>,
     
     /// The token account receiving the minted tokens
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = peer_token_account.mint == peer_mint.key() @ PeerTokenError::InvalidMint,
+        constraint = peer_token_account.owner == peer_authority.key() @ PeerTokenError::InvalidOwner
+    )]
     pub peer_token_account: InterfaceAccount<'info, TokenAccount>,
     
     /// The mint authority
@@ -83,14 +94,4 @@ pub struct DailyMintArgs<'info> {
 #[account]
 pub struct LastMint {
     pub last_mint_timestamp: i64,
-}
-
-
-
-#[error_code]
-pub enum DailyMintError {
-    #[msg("Tokens have already been minted today")]
-    AlreadyMintedToday,
-    #[msg("Invalid peer token account")]
-    InvalidPeerTokenAccount,
 } 

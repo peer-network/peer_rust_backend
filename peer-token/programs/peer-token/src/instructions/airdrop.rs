@@ -3,7 +3,7 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{Mint, TokenAccount, TokenInterface, transfer},
 };
-use std::str::FromStr;
+use crate::error::PeerTokenError;
 
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -16,13 +16,13 @@ pub struct RecipientData {
 
 pub fn transfer_tokens_handler(ctx: Context<TransferTokens>, amount: u64) -> Result<()> {
     // Validate inputs
-    require!(amount > 0, ErrorCode::InsufficientAmount);
+    require!(amount > 0, PeerTokenError::InvalidTransferAmount);
     
     // Verify there are enough tokens to transfer
     let peer_balance = ctx.accounts.peer_token_account.amount;
     require!(
         amount <= peer_balance,
-        ErrorCode::InsufficientFunds
+        PeerTokenError::InsufficientPeerTokens
     );
     
     // Transfer tokens from peer token account to user token account
@@ -51,7 +51,11 @@ pub struct TransferTokens<'info> {
     
     pub peer_mint: InterfaceAccount<'info, Mint>,
     
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = peer_token_account.mint == peer_mint.key() @ PeerTokenError::InvalidMint,
+        constraint = peer_token_account.owner == peer_authority.key() @ PeerTokenError::InvalidOwner
+    )]
     pub peer_token_account: InterfaceAccount<'info, TokenAccount>,
     
     #[account(
@@ -67,22 +71,4 @@ pub struct TransferTokens<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
     
     pub system_program: Program<'info, System>,
-}
-
-
-
-/// Custom errors with descriptive messages
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Cannot transfer zero or insufficient amount")]
-    InsufficientAmount,
-    
-    #[msg("Insufficient funds in peer token account")]
-    InsufficientFunds,
-    
-    #[msg("Invalid mint account")]
-    InvalidMint,
-    
-    #[msg("Invalid token account owner")]
-    InvalidOwner,
 }

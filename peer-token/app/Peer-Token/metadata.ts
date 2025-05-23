@@ -5,6 +5,7 @@ import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { Metaplex, keypairIdentity } from "@metaplex-foundation/js";
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
+import { ErrorHandler } from "../errors";
 
 dotenv.config();
 
@@ -114,8 +115,8 @@ async function main() {
                 console.log("🔹 Transaction:", response.signature);
                 console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${response.signature}?cluster=devnet`);
             } catch (error) {
-                console.error("❌ Error updating metadata:", error);
-                if (error instanceof Error) console.error(error.message);
+                console.error("❌ Error updating metadata:");
+                ErrorHandler.handle(error);
             }
         } else {
             if (metadataAccountInfo) {
@@ -154,8 +155,8 @@ async function main() {
                 console.log("🔹 Transaction:", tx);
                 console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${tx}?cluster=devnet`);
             } catch (error) {
-                console.error("❌ Error creating metadata:", error);
-                if (error instanceof Error) console.error(error.message);
+                console.error("❌ Error creating metadata:");
+                ErrorHandler.handle(error);
             }
         }
 
@@ -167,11 +168,8 @@ async function main() {
         console.log("5. Only the update authority can modify the metadata");
 
     } catch (error) {
-        console.error("\n❌ ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-        }
+        console.error("\n❌ ERROR:");
+        ErrorHandler.handle(error);
     }
 }
 

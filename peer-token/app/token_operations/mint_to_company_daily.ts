@@ -8,9 +8,21 @@ import {
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
-import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utilss";
+import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utils";
+import { ErrorHandler } from "../errors";
 
-import {MintResponse, Status} from "../../../../solana_client/client/handlers/solanaProvider/SolanaProviderResponse";
+// Define local interfaces instead of importing from external module
+export enum Status {
+    success = "SUCCESS",
+    error = "ERROR"
+}
+
+export interface MintResponse {
+    code: string;
+    message: string;
+    status: Status;
+    data: any;
+}
 
 class MintResponseImpl implements MintResponse {
     constructor(
@@ -20,25 +32,24 @@ class MintResponseImpl implements MintResponse {
         public data: any,
     ) {}
 
-    static success(): MintResponseImpl {
+    static success(data: any = []): MintResponseImpl {
         return new MintResponseImpl(
-            "",
-            "",
+            "200",
+            "Operation completed successfully",
             Status.success,
-            []
+            data
         )
     }
 
-    static error(code : string, message: string): MintResponseImpl {
+    static error(code: string, message: string, details: any = null): MintResponseImpl {
         return new MintResponseImpl(
             code,
             message,
             Status.error,
-            []
+            details ? details : []
         )
     }
 }
-
 
 // Set up the program ID
 const program_id = getPublicKey("PROGRAM_ID");
@@ -46,16 +57,19 @@ const connection = getSolanaConnection();
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const idl = getIdl();
 
-
-
+// Error codes
+const ERROR_CODES = {
+    MINT_NOT_FOUND: "MINT_001",
+    TOKEN_ACCOUNT_NOT_FOUND: "TOKEN_001",
+    ALREADY_MINTED_TODAY: "MINT_002",
+    TRANSACTION_FAILED: "TX_001",
+    UNDEFINED_ERROR: "SYS_001"
+};
 
 export async function mint(): Promise<MintResponseImpl> {
-
     try {
         console.log("\n🚀 Starting daily token minting to company account...");
         
-
-
         console.log("\n💼 Company wallet:", companyWallet.publicKey.toString());
 
         // Create provider with company wallet
@@ -65,7 +79,6 @@ export async function mint(): Promise<MintResponseImpl> {
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
-
 
         // Create program interface
         const program = new anchor.Program(idl, program_id, provider);
@@ -80,18 +93,18 @@ export async function mint(): Promise<MintResponseImpl> {
         // Check if mint exists
         const mintAccountInfo = await connection.getAccountInfo(mintPda);
         if (!mintAccountInfo) {
-            throw new Error("❌ Mint account does not exist!");
+            return MintResponseImpl.error(
+                ERROR_CODES.MINT_NOT_FOUND,
+                "Mint account does not exist"
+            );
         }
-        else{
+        else {
             console.log("✅ Mint account exists!");
             console.log("🔹 Mint Account Size:", mintAccountInfo.data.length);
             console.log("🔹 Mint Account Owner:", mintAccountInfo.owner.toString());
             console.log("-------------------------------------");
-
-
         }
         
-
         // Get company's token account address
         const companyTokenAccount = getAssociatedTokenAddressSync(
             mintPda,
@@ -104,9 +117,12 @@ export async function mint(): Promise<MintResponseImpl> {
         // Check if company token account exists
         const tokenAccountInfo = await connection.getAccountInfo(companyTokenAccount);
         if (!tokenAccountInfo) {
-            throw new Error("❌ Minting not possible: Company token account does not exist");
+            return MintResponseImpl.error(
+                ERROR_CODES.TOKEN_ACCOUNT_NOT_FOUND,
+                "Minting not possible: Company token account does not exist"
+            );
         }
-        else{
+        else {
             console.log("✅ Company token account exists!");
             console.log("🔹 Company Token Account Size:", tokenAccountInfo.data.length);
             console.log("🔹 Company Token Account Owner:", tokenAccountInfo.owner.toString());
@@ -150,42 +166,52 @@ export async function mint(): Promise<MintResponseImpl> {
             // Verify the mint
             const tokenAccountInfo = await connection.getTokenAccountBalance(companyTokenAccount);
             console.log("\n💰 Company Token Balance:", tokenAccountInfo.value.uiAmount);
-            return MintResponseImpl.success()
+            return MintResponseImpl.success({
+                tx: tx,
+                balance: tokenAccountInfo.value.uiAmount
+            });
         } catch (error) {
-            // console.error("❌ Error during daily mint:", error);
             if (error instanceof Error) {
                 console.log("-------------------------------------");
                 console.error("Error message:", error.message);
+                
                 if (error.message.includes("AlreadyMintedToday")) {
                     console.log("ℹ️ Tokens have already been minted today. Try again tomorrow.");
                     return MintResponseImpl.error(
-                       "40000",
+                        ERROR_CODES.ALREADY_MINTED_TODAY,
                         "Tokens have already been minted today. Try again tomorrow."
-                )
+                    );
                 }
+                
+                // Extract on-chain error code if available
+                const errorMatch = error.message.match(/custom program error: (0x[0-9a-f]+)/i);
+                const onChainErrorCode = errorMatch ? errorMatch[1] : null;
+                
                 return MintResponseImpl.error(
-                    "40000",
-                    error.name + ": " + error.message
-                )
+                    ERROR_CODES.TRANSACTION_FAILED,
+                    `Transaction failed: ${error.message}`,
+                    {
+                        errorName: error.name,
+                        onChainErrorCode
+                    }
+                );
             }
+            
+            const errorDetails = ErrorHandler.handle(error);
+            return MintResponseImpl.error(
+                ERROR_CODES.TRANSACTION_FAILED,
+                "Transaction failed with unknown error",
+                errorDetails
+            );
         }
-
     } catch (e) {
-        const error = e as Error
-        console.error("\n❌ ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-        }
+        console.error("\n❌ ERROR:");
+        const errorDetails = ErrorHandler.handle(e);
+        
         return MintResponseImpl.error(
-            "6000",
-            error.name + ": " + error.message
-        )
+            ERROR_CODES.UNDEFINED_ERROR,
+            `Unexpected error: ${errorDetails.message}`,
+            errorDetails.details
+        );
     }
-    return MintResponseImpl.error(
-            "60000",
-            "Undefined error"
-    )
 }
-
-// mint();

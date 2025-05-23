@@ -9,11 +9,9 @@ pub fn handler(ctx: Context<MintTokenArgs>) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct MintTokenArgs<'info> {
-
     #[account(mut)]
     pub peer_authority: Signer<'info>,
     
-   
     #[account(
         init,
         payer = peer_authority,
