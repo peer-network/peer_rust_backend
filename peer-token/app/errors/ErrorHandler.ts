@@ -21,10 +21,9 @@ export enum OnChainErrorCode {
   INVALID_OWNER = 6002,
   INVALID_TRANSFER_AMOUNT = 6003,
   INSUFFICIENT_PEER_TOKENS = 6004,
-  ALREADY_MINTED_TODAY = 6005,
-  INVALID_TOKEN_DECIMALS = 6006,
-  INVALID_TOKEN_METADATA = 6007,
-  METADATA_CREATION_FAILED = 6008
+  INVALID_TOKEN_DECIMALS = 6005,
+  INVALID_TOKEN_METADATA = 6006,
+  METADATA_CREATION_FAILED = 6007
 }
 
 // Simple Error Response Interface
@@ -48,8 +47,6 @@ function getOnChainErrorMessage(code: number): string {
       return "Invalid transfer amount";
     case OnChainErrorCode.INSUFFICIENT_PEER_TOKENS:
       return "Insufficient PEER token balance";
-    case OnChainErrorCode.ALREADY_MINTED_TODAY:
-      return "Already minted tokens today";
     case OnChainErrorCode.INVALID_TOKEN_DECIMALS:
       return "Invalid token decimals";
     case OnChainErrorCode.INVALID_TOKEN_METADATA:
@@ -151,9 +148,7 @@ export class ErrorHandler {
       
       // Map specific on-chain errors to our error codes
       let errorCode = ErrorCode.TRANSACTION_FAILED;
-      if (onChainCode === OnChainErrorCode.ALREADY_MINTED_TODAY) {
-        errorCode = ErrorCode.ALREADY_MINTED_TODAY;
-      } else if (onChainCode === OnChainErrorCode.INSUFFICIENT_PEER_TOKENS) {
+      if (onChainCode === OnChainErrorCode.INSUFFICIENT_PEER_TOKENS) {
         errorCode = ErrorCode.INSUFFICIENT_BALANCE;
       }
       

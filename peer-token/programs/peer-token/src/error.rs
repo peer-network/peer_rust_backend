@@ -25,19 +25,15 @@ pub enum PeerTokenError {
     #[msg("Insufficient token balance")]
     InsufficientPeerTokens,
 
-    /// 6005 - Already minted tokens today
-    #[msg("Tokens have already been minted today")]
-    AlreadyMintedToday,
-
-    /// 6006 - Invalid token decimals
+    /// 6005 - Invalid token decimals
     #[msg("Invalid token decimals")]
     InvalidTokenDecimals,
 
-    /// 6007 - Invalid token metadata
+    /// 6006 - Invalid token metadata
     #[msg("Invalid token metadata")]
     InvalidTokenMetadata,
 
-    /// 6008 - Metadata creation failed
+    /// 6007 - Metadata creation failed
     #[msg("Metadata creation failed")]
     MetadataCreationFailed,
 }

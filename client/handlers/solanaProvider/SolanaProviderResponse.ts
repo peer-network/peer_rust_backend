@@ -1,6 +1,6 @@
 export enum Status {
-  error = "error",
-  success = "success"
+  error = "ERROR",
+  success = "SUCCESS"
 }
 
 export interface BasicSolanaResponse {

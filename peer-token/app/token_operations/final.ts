@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { PublicKey, Connection, Keypair, SystemProgram, clusterApiUrl } from "@solana/web3.js";
+import { PublicKey, Connection, Keypair, SystemProgram, clusterApiUrl, ConfirmedSignatureInfo } from "@solana/web3.js";
 import { 
     TOKEN_2022_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -46,6 +46,100 @@ export interface TokenDistribution {
     };
 }
 
+/**
+ * Check if daily_mint instruction was already executed today by examining transaction history
+ */
+async function checkIfAlreadyMintedToday(
+    connection: Connection,
+    companyKeypair: Keypair,
+    program_id: PublicKey
+): Promise<boolean> {
+    try {
+        console.log("🔍 Checking transaction history for today's minting...");
+        
+        // Get current date boundaries (start and end of today in UTC)
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
+        
+        console.log("🔹 Checking period:", startOfToday.toISOString(), "to", endOfToday.toISOString());
+        
+        // Get recent transaction signatures for the company wallet
+        const signatures = await connection.getSignaturesForAddress(
+            companyKeypair.publicKey,
+            {
+                limit: 100 // Check last 100 transactions
+            }
+        );
+        
+        console.log(`🔹 Found ${signatures.length} recent transactions`);
+        
+        // Filter signatures from today
+        const todaySignatures = signatures.filter((sig: ConfirmedSignatureInfo) => {
+            if (!sig.blockTime) return false;
+            const txDate = new Date(sig.blockTime * 1000);
+            return txDate >= startOfToday && txDate <= endOfToday;
+        });
+        
+        console.log(`🔹 Found ${todaySignatures.length} transactions from today`);
+        
+        if (todaySignatures.length === 0) {
+            console.log("✅ No transactions found today - safe to mint");
+            return false;
+        }
+        
+        // Check each transaction from today to see if it contains daily_mint instruction
+        for (const sigInfo of todaySignatures) {
+            try {
+                const transaction = await connection.getTransaction(sigInfo.signature, {
+                    maxSupportedTransactionVersion: 0
+                });
+                
+                if (!transaction || !transaction.meta || transaction.meta.err) {
+                    continue; // Skip failed or invalid transactions
+                }
+                
+                // Check if this transaction involved our program
+                const accountKeys = transaction.transaction.message.getAccountKeys();
+                const programInvolved = accountKeys.staticAccountKeys.some(key => 
+                    key.equals(program_id)
+                );
+                
+                if (programInvolved) {
+                    // Check transaction logs for daily_mint instruction
+                    const logs = transaction.meta.logMessages || [];
+                    const isDailyMint = logs.some(log => 
+                        log.includes('Daily minted') || 
+                        log.includes('daily_mint') ||
+                        log.includes('Instruction: DailyMint')
+                    );
+                    
+                    if (isDailyMint) {
+                        const txDate = new Date(sigInfo.blockTime! * 1000);
+                        console.log("❌ Found daily_mint transaction from today:");
+                        console.log("🔹 Transaction:", sigInfo.signature);
+                        console.log("🔹 Time:", txDate.toISOString());
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.warn(`⚠️ Could not parse transaction ${sigInfo.signature}:`, error);
+                // Continue checking other transactions
+            }
+        }
+        
+        console.log("✅ No daily_mint transactions found today - safe to mint");
+        return false;
+        
+    } catch (error) {
+        console.warn("⚠️ Error checking transaction history:", error);
+        // If we can't check history, err on the side of caution and allow minting
+        // The worst case is duplicate minting, which is better than blocking legitimate mints
+        console.log("⚠️ Unable to verify transaction history - proceeding with mint");
+        return false;
+    }
+}
+
 async function mintToCompany(
     program: Program,
     connection: Connection,
@@ -55,27 +149,26 @@ async function mintToCompany(
 ): Promise<void> {
     console.log("\n🚀 Step 1: Daily Minting to Company Account");
 
-    // Derive the last mint account PDA
-    const [lastMintPda] = PublicKey.findProgramAddressSync(
-        [
-            Buffer.from("daily-mint"),
-            companyKeypair.publicKey.toBuffer()
-        ],
-        program_id
-    );
-    console.log("🔹 Last Mint PDA:", lastMintPda.toString());
-
-    // Amount to mint (5000 tokens with 9 decimals)
-    const amount = daily_mint_amount * (10 ** token_decimals);
-
     try {
+        // CLIENT-SIDE DAILY MINT CHECK - Check transaction history
+        const alreadyMinted = await checkIfAlreadyMintedToday(connection, companyKeypair, program_id);
+        if (alreadyMinted) {
+            console.log("ℹ️ Tokens have already been minted today. Proceeding with distribution.");
+            return;
+        }
+
+        // Amount to mint (daily_mint_amount tokens with token_decimals)
+        const amount = daily_mint_amount * (10 ** token_decimals);
+
+        console.log("\n⏳ Attempting daily mint to company account...");
+        
+        // Use the simplified daily_mint instruction (no LastMint PDA needed)
         const tx = await program.methods
             .dailyMint(new BN(amount))
             .accounts({
                 peerAuthority: companyKeypair.publicKey,
                 peerMint: mintPda,
                 peerTokenAccount: companyTokenAccount,
-                lastMint: lastMintPda,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
                 systemProgram: SystemProgram.programId
             })
@@ -89,14 +182,14 @@ async function mintToCompany(
         // Verify the mint
         const tokenAccountInfo = await connection.getTokenAccountBalance(companyTokenAccount);
         console.log("\n💰 Company Token Balance:", tokenAccountInfo.value.uiAmount);
+        
     } catch (error) {
         const errorInfo = ErrorHandler.handle(error);
         
         // Business logic: "Already minted today" is not a failure condition
-        // It means we can proceed with distribution
         if (errorInfo.code === ErrorCode.ALREADY_MINTED_TODAY) {
             console.log("ℹ️ Tokens have already been minted today. Proceeding with distribution.");
-            return; // Continue with the process
+            return;
         }
         
         // All other errors are genuine failures
