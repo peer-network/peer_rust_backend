@@ -28,17 +28,11 @@ export enum DayFilterType {
   Y0 = 'Y0'
 }
 
-export type GitData = {
-  __typename?: 'GitData';
-  gitBranch?: Maybe<Scalars['String']['output']>;
-  gitCommitId?: Maybe<Scalars['String']['output']>;
-};
-
 export type HelloResponse = {
   __typename?: 'HelloResponse';
-  data?: Maybe<GitData>;
-  message?: Maybe<Scalars['String']['output']>;
-  responseCode?: Maybe<Scalars['String']['output']>;
+  currentVersion?: Maybe<Scalars['String']['output']>;
+  currentuserid?: Maybe<Scalars['ID']['output']>;
+  wikiLink?: Maybe<Scalars['String']['output']>;
 };
 
 export type Mutation = {
@@ -142,8 +136,8 @@ export type DirectiveResolverFn<TResult = {}, TParent = {}, TContext = {}, TArgs
 export type ResolversTypes = ResolversObject<{
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
   DayFilterType: DayFilterType;
-  GitData: ResolverTypeWrapper<GitData>;
   HelloResponse: ResolverTypeWrapper<HelloResponse>;
+  ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Mutation: ResolverTypeWrapper<{}>;
   Query: ResolverTypeWrapper<{}>;
   RequestGemsDataPullStatusResponse: ResolverTypeWrapper<RequestGemsDataPullStatusResponse>;
@@ -153,24 +147,18 @@ export type ResolversTypes = ResolversObject<{
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = ResolversObject<{
   Boolean: Scalars['Boolean']['output'];
-  GitData: GitData;
   HelloResponse: HelloResponse;
+  ID: Scalars['ID']['output'];
   Mutation: {};
   Query: {};
   RequestGemsDataPullStatusResponse: RequestGemsDataPullStatusResponse;
   String: Scalars['String']['output'];
 }>;
 
-export type GitDataResolvers<ContextType = any, ParentType extends ResolversParentTypes['GitData'] = ResolversParentTypes['GitData']> = ResolversObject<{
-  gitBranch?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  gitCommitId?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-}>;
-
 export type HelloResponseResolvers<ContextType = any, ParentType extends ResolversParentTypes['HelloResponse'] = ResolversParentTypes['HelloResponse']> = ResolversObject<{
-  data?: Resolver<Maybe<ResolversTypes['GitData']>, ParentType, ContextType>;
-  message?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  responseCode?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  currentVersion?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  currentuserid?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  wikiLink?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
@@ -190,7 +178,6 @@ export type RequestGemsDataPullStatusResponseResolvers<ContextType = any, Parent
 }>;
 
 export type Resolvers<ContextType = any> = ResolversObject<{
-  GitData?: GitDataResolvers<ContextType>;
   HelloResponse?: HelloResponseResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;

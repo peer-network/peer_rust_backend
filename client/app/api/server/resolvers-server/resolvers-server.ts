@@ -14,7 +14,13 @@ import {ClientTypes} from '../../../../domain/GemsResultsData';
 
 const queries: Resolvers = {
   Query: {
-    hello: () => { return new HelloUseCase().execute() }
+    hello: async () => { 
+      const response = await new HelloUseCase().execute();
+      if (response.data) {
+        return response.data;
+      }
+      throw new Error(`${response.responseCode}: ${response.message}`);
+    }
   },
   Mutation: {
     mint(parent, args, contextValue, info) {

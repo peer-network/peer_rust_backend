@@ -21,14 +21,9 @@ enum DayFilterType {
 }
 
 type HelloResponse {
-  responseCode : String
-  message : String
-  data : GitData
-}
-
-type GitData {
-  gitCommitId : String
-  gitBranch : String
+  currentuserid : ID
+  currentVersion : String
+  wikiLink : String
 }
 
 type RequestGemsDataPullStatusResponse {
