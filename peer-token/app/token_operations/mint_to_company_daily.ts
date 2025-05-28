@@ -9,7 +9,7 @@ import {
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utils";
-import { ErrorHandler } from "../errors";
+import { ErrorHandler, ErrorFactory, ErrorCode } from "../errors";
 
 // Define local interfaces instead of importing from external module
 export enum Status {
@@ -57,13 +57,18 @@ const connection = getSolanaConnection();
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const idl = getIdl();
 
-// Error codes
+// Constants
+const DAILY_MINT_AMOUNT = 5000; // 5000 tokens
+const TOKEN_DECIMALS = 9;
+const DAILY_MINT_RAW_AMOUNT = DAILY_MINT_AMOUNT * (10 ** TOKEN_DECIMALS); // 5000000000000
+
+// Error codes - keeping for backward compatibility but will use ErrorHandler
 const ERROR_CODES = {
-    MINT_NOT_FOUND: "MINT_001",
-    TOKEN_ACCOUNT_NOT_FOUND: "TOKEN_001",
-    ALREADY_MINTED_TODAY: "MINT_002",
-    TRANSACTION_FAILED: "TX_001",
-    UNDEFINED_ERROR: "SYS_001"
+    MINT_NOT_FOUND: ErrorCode.MINT_NOT_FOUND.toString(),
+    TOKEN_ACCOUNT_NOT_FOUND: ErrorCode.TOKEN_ACCOUNT_NOT_FOUND.toString(),
+    ALREADY_MINTED_TODAY: ErrorCode.ALREADY_MINTED_TODAY.toString(),
+    TRANSACTION_FAILED: ErrorCode.TRANSACTION_FAILED.toString(),
+    UNDEFINED_ERROR: ErrorCode.UNKNOWN_ERROR.toString()
 };
 
 /**
@@ -73,6 +78,12 @@ async function checkIfAlreadyMintedToday(): Promise<boolean> {
     try {
         console.log("🔍 Checking transaction history for today's minting...");
         
+        // Skip check if SKIP_DAILY_CHECK environment variable is set (for testing)
+        if (process.env.SKIP_DAILY_CHECK === 'true') {
+            console.log("⚠️ Daily check skipped (SKIP_DAILY_CHECK=true)");
+            return false;
+        }
+        
         // Get current date boundaries (start and end of today in UTC)
         const now = new Date();
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -80,11 +91,11 @@ async function checkIfAlreadyMintedToday(): Promise<boolean> {
         
         console.log("🔹 Checking period:", startOfToday.toISOString(), "to", endOfToday.toISOString());
         
-        // Get recent transaction signatures for the company wallet
+        // Get recent transaction signatures for the company wallet (reduced limit to avoid rate limiting)
         const signatures = await connection.getSignaturesForAddress(
             companyWallet.publicKey,
             {
-                limit: 100 // Check last 100 transactions
+                limit: 20 // Reduced from 100 to 20 to avoid rate limits
             }
         );
         
@@ -104,9 +115,19 @@ async function checkIfAlreadyMintedToday(): Promise<boolean> {
             return false;
         }
         
+        // Limit the number of transactions to check to avoid rate limiting
+        const maxTransactionsToCheck = Math.min(todaySignatures.length, 10);
+        console.log(`🔹 Checking ${maxTransactionsToCheck} most recent transactions from today`);
+        
         // Check each transaction from today to see if it contains daily_mint instruction
-        for (const sigInfo of todaySignatures) {
+        for (let i = 0; i < maxTransactionsToCheck; i++) {
+            const sigInfo = todaySignatures[i];
             try {
+                // Add delay between requests to avoid rate limiting
+                if (i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+                }
+                
                 const transaction = await connection.getTransaction(sigInfo.signature, {
                     maxSupportedTransactionVersion: 0
                 });
@@ -122,29 +143,58 @@ async function checkIfAlreadyMintedToday(): Promise<boolean> {
                 );
                 
                 if (programInvolved) {
-                    // Check transaction logs for daily_mint instruction
+                    // Check transaction logs for daily_mint instruction with specific amount validation
                     const logs = transaction.meta.logMessages || [];
-                    const isDailyMint = logs.some(log => 
+                    
+                    // Daily mint amount validation
+                    const dailyMintAmountStr = DAILY_MINT_RAW_AMOUNT.toString();
+                    const dailyMintUIAmount = DAILY_MINT_AMOUNT.toString(); // UI amount
+                    
+                    // Check for daily mint instruction patterns
+                    const isDailyMintInstruction = logs.some(log => 
                         log.includes('Daily minted') || 
                         log.includes('daily_mint') ||
                         log.includes('Instruction: DailyMint')
                     );
+                    
+                    // Check for specific daily mint amount in logs
+                    const hasCorrectAmount = logs.some(log => 
+                        log.includes(dailyMintAmountStr) || // Raw amount: 5000000000000
+                        log.includes(dailyMintUIAmount) ||  // UI amount: 5000
+                        log.includes('5000 tokens') ||     // Formatted amount
+                        (log.includes('mint') && log.includes('5000')) // Generic mint with 5000
+                    );
+                    
+                    // Must have both daily mint instruction AND correct amount
+                    const isDailyMint = isDailyMintInstruction && hasCorrectAmount;
                     
                     if (isDailyMint) {
                         const txDate = new Date(sigInfo.blockTime! * 1000);
                         console.log("❌ Found daily_mint transaction from today:");
                         console.log("🔹 Transaction:", sigInfo.signature);
                         console.log("🔹 Time:", txDate.toISOString());
+                        console.log("🔹 Amount validated: 5000 tokens");
                         return true;
+                    }
+                    
+                    // Log if we found instruction but wrong amount (for debugging)
+                    if (isDailyMintInstruction && !hasCorrectAmount) {
+                        console.log("🔹 Found daily_mint instruction but amount doesn't match 5000 tokens");
                     }
                 }
             } catch (error) {
+                // Handle rate limiting specifically
+                if (error instanceof Error && error.message.includes('429')) {
+                    console.warn("⚠️ Rate limited - unable to complete full transaction history check");
+                    console.log("⚠️ Proceeding with mint (err on side of allowing mint)");
+                    return false;
+                }
                 console.warn(`⚠️ Could not parse transaction ${sigInfo.signature}:`, error);
                 // Continue checking other transactions
             }
         }
         
-        console.log("✅ No daily_mint transactions found today - safe to mint");
+        console.log("✅ No daily_mint transactions found in checked transactions - safe to mint");
         return false;
         
     } catch (error) {
@@ -183,9 +233,11 @@ export async function mint(): Promise<MintResponseImpl> {
         // Check if mint exists
         const mintAccountInfo = await connection.getAccountInfo(mintPda);
         if (!mintAccountInfo) {
+            const error = ErrorFactory.mintNotFound(mintPda);
             return MintResponseImpl.error(
-                ERROR_CODES.MINT_NOT_FOUND,
-                "Mint account does not exist"
+                error.code.toString(),
+                error.message,
+                error.details
             );
         }
         else {
@@ -207,9 +259,11 @@ export async function mint(): Promise<MintResponseImpl> {
         // Check if company token account exists
         const tokenAccountInfo = await connection.getAccountInfo(companyTokenAccount);
         if (!tokenAccountInfo) {
+            const error = ErrorFactory.tokenAccountNotFound(companyTokenAccount, companyWallet.publicKey);
             return MintResponseImpl.error(
-                ERROR_CODES.TOKEN_ACCOUNT_NOT_FOUND,
-                "Minting not possible: Company token account does not exist"
+                error.code.toString(),
+                error.message,
+                error.details
             );
         }
         else {
@@ -224,9 +278,10 @@ export async function mint(): Promise<MintResponseImpl> {
         const alreadyMinted = await checkIfAlreadyMintedToday();
         if (alreadyMinted) {
             console.log("ℹ️ Tokens have already been minted today. Try again tomorrow.");
+            const error = ErrorFactory.alreadyMintedToday();
             return MintResponseImpl.error(
-                ERROR_CODES.ALREADY_MINTED_TODAY,
-                "Tokens have already been minted today. Try again tomorrow.",
+                error.code.toString(),
+                error.message,
                 {
                     checkMethod: "transaction_history",
                     currentDate: new Date().toISOString()
@@ -235,7 +290,7 @@ export async function mint(): Promise<MintResponseImpl> {
         }
 
         // Amount to mint (5000 tokens)
-        const amount = 5000 * (10 ** 9); // 5000 tokens with 9 decimals
+        const amount = DAILY_MINT_RAW_AMOUNT;
 
         console.log("\n⏳ Attempting daily mint to company account...");
         
@@ -265,39 +320,22 @@ export async function mint(): Promise<MintResponseImpl> {
                 balance: tokenAccountInfo.value.uiAmount
             });
         } catch (error) {
-            if (error instanceof Error) {
-                console.log("-------------------------------------");
-                console.error("Error message:", error.message);
-                
-                // Extract on-chain error code if available
-                const errorMatch = error.message.match(/custom program error: (0x[0-9a-f]+)/i);
-                const onChainErrorCode = errorMatch ? errorMatch[1] : null;
-                
-                return MintResponseImpl.error(
-                    ERROR_CODES.TRANSACTION_FAILED,
-                    `Transaction failed: ${error.message}`,
-                    {
-                        errorName: error.name,
-                        onChainErrorCode
-                    }
-                );
-            }
+            const errorResponse = ErrorHandler.handle(error);
             
-            const errorDetails = ErrorHandler.handle(error);
             return MintResponseImpl.error(
-                ERROR_CODES.TRANSACTION_FAILED,
-                "Transaction failed with unknown error",
-                errorDetails
+                errorResponse.code.toString(),
+                errorResponse.message,
+                errorResponse.details
             );
         }
     } catch (e) {
         console.error("\n❌ ERROR:");
-        const errorDetails = ErrorHandler.handle(e);
+        const errorResponse = ErrorHandler.handle(e);
         
         return MintResponseImpl.error(
-            ERROR_CODES.UNDEFINED_ERROR,
-            `Unexpected error: ${errorDetails.message}`,
-            errorDetails.details
+            errorResponse.code.toString(),
+            errorResponse.message,
+            errorResponse.details
         );
     }
 }

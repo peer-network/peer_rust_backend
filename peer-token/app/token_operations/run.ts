@@ -1,3 +1,4 @@
+// This is created for testing purposes.
 import { main  } from "./airdrop";
 import { tokenDistribution } from "../mockdata/distribution";
 import { ErrorHandler } from "../errors";

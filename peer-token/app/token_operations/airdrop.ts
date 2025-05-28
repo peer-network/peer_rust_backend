@@ -17,19 +17,15 @@ import { TokenDistribution } from "../mockdata/distribution";
 import { getIdl, getKeypairFromEnvPath, getPublicKey, getSolanaConnection } from "../../utils";
 import { ErrorHandler, ErrorFactory, ErrorCode, Validators } from "../errors";
 
-
-
 // Set up the program ID
 const program_id = getPublicKey("PROGRAM_ID");
 const connection = getSolanaConnection();
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const idl = getIdl();
 
-
 export async function main(tokendata: TokenDistribution) {
     try {
         console.log("\n🚀 Starting token airdrop process...");
-        
         
         console.log("\n💼 Company wallet (token sender):", companyWallet.publicKey.toString());
 
@@ -40,8 +36,6 @@ export async function main(tokendata: TokenDistribution) {
             { commitment: "confirmed" }
         );
         anchor.setProvider(provider);
-
-        
 
         // Create program interface
         const program = new anchor.Program(idl, program_id, provider);
@@ -91,8 +85,6 @@ export async function main(tokendata: TokenDistribution) {
         
         const initialAccount = unpackAccount(companyTokenAccount, initialCompanyInfo, TOKEN_2022_PROGRAM_ID);
         console.log(`💰 Initial company token balance: ${formatAmount(initialAccount.amount)} tokens`);
-
-        
 
         // let tokenData = tokendata;
         if (!tokendata?.data?.GetGemsForDay?.affectedRows?.data) {
@@ -207,10 +199,7 @@ export async function main(tokendata: TokenDistribution) {
             console.error("Error details:", JSON.stringify(errorDetails.details, null, 2));
         }
         
-
-        
         throw error; // Re-throw so calling code can handle it
     }
 }
-
 // main(tokenDistribution).then(() => console.log("\n✨ Airdrop process completed")); 
