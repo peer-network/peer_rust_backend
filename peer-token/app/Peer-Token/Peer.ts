@@ -26,7 +26,7 @@ const TOKEN_METADATA_PROGRAM_ID = getPublicKey("TOKEN_METADATA_PROGRAM_ID");
 const TOKEN_2022_PROGRAM_ID = getPublicKey("TOKEN_2022_PROGRAM_ID");
 const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
 const connection = getSolanaConnection();
- const idl = getIdl();
+const idl = getIdl();
 
 
 async function main() {
