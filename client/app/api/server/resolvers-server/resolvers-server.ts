@@ -7,7 +7,7 @@ import { PeerBackendAuthRepositoryImpl } from '../../../../handlers/repos/PeerBa
 import MockPeerBackendClientAuthEndpointImpl from '../../../../handlers/endpoint/client/PeerBackendAuth/MockPeerBackendClientAuthEndpointImpl';
 import MockPeerBackendClientEndpointImpl from '../../../../handlers/endpoint/client/PeerBackend/MockPeerBackendClientEndpointImpl';
 import {SolanaRPCProviderImpl} from '../../../../handlers/solanaProvider/SolanaProviderImpl';
-import MintUseCaseValidatorImplZod from '../../../../useCases/Mint/validation/MintUseCaseValidatorImplZod';
+import MintUseCaseValidator from '../../../../useCases/Mint/validation/MintUseCaseValidator';
 import PeerBackendClientEndpointImpl from '../../../../handlers/endpoint/client/PeerBackend/PeerBackendClientEndpointImpl';
 import PeerBackendClientAuthEndpointImpl from '../../../../handlers/endpoint/client/PeerBackendAuth/PeerBackendClientAuthEndpointImpl';
 import {ClientTypes} from '../../../../domain/GemsResultsData';
@@ -36,7 +36,7 @@ const queries: Resolvers = {
         new SolanaRepository(
           new SolanaRPCProviderImpl()
         ),
-        new MintUseCaseValidatorImplZod()
+        new MintUseCaseValidator()
       ).execute(day)
     },
     mockMint(parent, args, contextValue, info) {
@@ -52,7 +52,7 @@ const queries: Resolvers = {
         new SolanaRepository(
           new SolanaRPCProviderImpl()
         ),
-        new MintUseCaseValidatorImplZod()
+        new MintUseCaseValidator()
       ).execute(day)
     }
   }

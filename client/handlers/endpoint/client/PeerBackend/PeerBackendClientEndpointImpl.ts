@@ -4,8 +4,7 @@ import { DAILY_GEMS_RESULTS_REQUEST, DAILY_GEMS_STATUS_REQUEST,HELLO_REQUREST}  
 import {clientManager} from '../../../../app/api/client/client'
 import { PeerBackendDTO } from './PeerBackendEndpointDTO';
 import { ClientTypes } from '../../../../domain/GemsResultsData';
-import { ClientExceptionImpl } from '../../../../utils/errors/ClientException';
-import { ClientErrorCases } from '../../../../utils/errors/IClientErrorCases';
+import { ErrorHandler, ErrorFactory, ClientErrorCases } from '../../../../utils/errors';
 
 
 export default class PeerBackendClientEndpointImpl implements IPeerBackendClientEndpoint {
@@ -34,14 +33,16 @@ export default class PeerBackendClientEndpointImpl implements IPeerBackendClient
         const dto = response.data.dailygemsresults.affectedRows
         console.log(response.data.dailygemsresults)
         if (!dto) {
-            throw new ClientExceptionImpl(ClientErrorCases.ObjectContentsIsInvalid, "PeerBackendClientEndpointImpl: getPeerDailyGemsResults: data is NULL")
+            const error = ErrorFactory.resourceNotFound('daily gems data', 'response.data.dailygemsresults.affectedRows');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
 
         const totalGems = dto.totalGems
         const userGemsRaw = dto.data as Array<any> 
 
         if (!userGemsRaw) {
-            throw new ClientExceptionImpl(ClientErrorCases.ObjectContentsIsInvalid, "PeerBackendClientEndpointImpl: getPeerDailyGemsResults: data is NULL")
+            const error = ErrorFactory.missingRequiredField('userGems data');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
 
         const userGems = userGemsRaw.map((user) => {
@@ -53,7 +54,8 @@ export default class PeerBackendClientEndpointImpl implements IPeerBackendClient
         })
 
         if (!userGems || !totalGems) {
-            throw new ClientExceptionImpl(ClientErrorCases.ObjectContentsIsInvalid, "PeerBackendClientEndpointImpl: getPeerDailyGemsResults: data is NULL")
+            const error = ErrorFactory.validationError('gems data', { userGems, totalGems }, 'incomplete data structure');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
 
         const gemsData = new PeerBackendDTO.GetDailyGemsResultsData(

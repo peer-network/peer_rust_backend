@@ -1,4 +1,4 @@
-import { CodeDescription } from "../../utils/errors/types";
+import { CodeDescription, ErrorHandler, ErrorFactory } from '../../utils/errors';
 import { Result } from "../../domain/Result";
 import { Status } from "../../handlers/solanaProvider/SolanaProviderResponse";
 import { ISolanaRepository } from "../../interfaces/repos/ISolanaRepository";

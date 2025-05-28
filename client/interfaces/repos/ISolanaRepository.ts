@@ -1,7 +1,8 @@
 import { ClientTypes } from "../../domain/GemsResultsData"
 import { MintResponse } from "../../handlers/solanaProvider/SolanaProviderResponse"
 import { Result } from "../../domain/Result"
-import { CodeDescription } from "../../utils/errors/types"
+import { Status } from "../../handlers/solanaProvider/SolanaProviderResponse"
+import { CodeDescription, ErrorHandler, ErrorFactory } from '../../utils/errors'
 
 export interface ISolanaRepository {
     mint(): Promise<Result<undefined,CodeDescription>>

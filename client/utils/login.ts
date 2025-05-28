@@ -1,10 +1,9 @@
 import dotenv from 'dotenv';
 import { logger } from './logger';
 import path from 'path';
-import { CodeDescription } from './errors';
+import { CodeDescription, ErrorHandler, ErrorFactory } from './errors';
 import { PeerBackendDTO } from '../handlers/endpoint/client/PeerBackend/PeerBackendEndpointDTO';
 import { baseConfig } from '../app/config/config';
-import { ClientExceptionImpl } from './errors/ClientException';
 
 dotenv.config({ path: path.resolve(__dirname, '../env/login.env') });
 
@@ -38,20 +37,24 @@ export default class PeerBackendLogin {
 
     private static validateLoginQuery() {
         if (!EMAIL || !PASS ) {
-            throw new ClientExceptionImpl(this.errors.ENV_ERROR)
+            const error = ErrorFactory.configurationError('login credentials', 'EMAIL or PASSWORD not set in environment');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
     }
     private static async getLoginResponse(responseRaw : any) : Promise<PeerBackendDTO.LoginDTO> {
         if (!responseRaw) {
-            throw new ClientExceptionImpl(this.errors.RESPONSE_ERROR)
+            const error = ErrorFactory.externalServiceError('PeerBackend', undefined, 'No response received');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
         const responseJSON = await responseRaw.json();
         if (!responseJSON) {
-            throw new ClientExceptionImpl(this.errors.RESPONSE_ERROR)
+            const error = ErrorFactory.externalServiceError('PeerBackend', undefined, 'Empty JSON response');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
         const data = responseJSON.data.login
         if (!data) {
-            throw new ClientExceptionImpl(this.errors.RESPONSE_ERROR)
+            const error = ErrorFactory.resourceNotFound('login data', 'response.data.login');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
         const castedDTO = data as PeerBackendDTO.LoginDTO
         const loginResponse = new PeerBackendDTO.LoginDTO(
@@ -62,7 +65,8 @@ export default class PeerBackendLogin {
         )
 
         if (!loginResponse) {
-            throw new ClientExceptionImpl(this.errors.RESPONSE_ERROR)
+            const error = ErrorFactory.validationError('loginResponse', loginResponse, 'failed to create DTO');
+            throw new Error(`${error.message} (Code: ${error.code})`);
         }
         return loginResponse
     }

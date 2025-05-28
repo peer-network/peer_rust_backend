@@ -1,28 +1,30 @@
-import { IUseCase } from "../interfaces/useCase/IUseCase"
-import GitInfo from '../utils/gitInfo'
-import { GitData } from '../infrastructure/gql/generated-types/server/types-server';
+import { IUseCase } from "../interfaces/useCase/IUseCase";
+import GitInfo from '../utils/gitInfo';
+import { HelloResponse } from '../infrastructure/gql/generated-types/server/types-server';
 import CoreClientResponse from '../domain/CoreClientResponse';
-import { IClientErrorCases } from "../utils/errors/IClientErrorCases";
-import { CodeDescription } from "../utils/errors/types";
-
-class HelloUseCaseErrors implements IClientErrorCases {
-    public static GitDataError : CodeDescription = {
-        code: "40000",
-        message: 'Git Вata Вrror'
-    };
-}
+import { ClientErrorCases } from "../utils/errors";
+import { ErrorFactory } from '../utils/errors';
 
 export class HelloUseCase implements IUseCase {
-  readonly errors = HelloUseCaseErrors
+  readonly errors = ClientErrorCases;
 
-  async execute(): Promise<CoreClientResponse<GitData>> {
-    const helloResponse : GitData = {
-        gitCommitId : GitInfo.getLastCommitId(),
-        gitBranch : GitInfo.getBranch()
+  async execute(): Promise<CoreClientResponse<HelloResponse>> {
+    try {
+      const helloResponse: HelloResponse = {
+        currentuserid: "user123", // You can make this dynamic based on your needs
+        currentVersion: GitInfo.getLastCommitId(),
+        wikiLink: `https://github.com/your-repo/tree/${GitInfo.getBranch()}`
+      };
+      
+      if (!helloResponse.currentVersion) {
+        const error = ErrorFactory.configurationError('git version', 'Unable to retrieve git commit information');
+        return CoreClientResponse.error(error);
+      }
+      
+      return CoreClientResponse.success(helloResponse);
+    } catch (error: any) {
+      const errorResponse = ErrorFactory.internalServerError('hello operation', error);
+      return CoreClientResponse.error(errorResponse);
     }
-    if (!helloResponse.gitBranch || !helloResponse.gitCommitId) {
-      return CoreClientResponse.error(this.errors.GitDataError)
-    }
-    return CoreClientResponse.success(helloResponse)
   }
 }

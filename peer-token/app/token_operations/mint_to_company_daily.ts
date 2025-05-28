@@ -62,15 +62,6 @@ const DAILY_MINT_AMOUNT = 5000; // 5000 tokens
 const TOKEN_DECIMALS = 9;
 const DAILY_MINT_RAW_AMOUNT = DAILY_MINT_AMOUNT * (10 ** TOKEN_DECIMALS); // 5000000000000
 
-// Error codes - keeping for backward compatibility but will use ErrorHandler
-const ERROR_CODES = {
-    MINT_NOT_FOUND: ErrorCode.MINT_NOT_FOUND.toString(),
-    TOKEN_ACCOUNT_NOT_FOUND: ErrorCode.TOKEN_ACCOUNT_NOT_FOUND.toString(),
-    ALREADY_MINTED_TODAY: ErrorCode.ALREADY_MINTED_TODAY.toString(),
-    TRANSACTION_FAILED: ErrorCode.TRANSACTION_FAILED.toString(),
-    UNDEFINED_ERROR: ErrorCode.UNKNOWN_ERROR.toString()
-};
-
 /**
  * Check if daily_mint instruction was already executed today by examining transaction history
  */

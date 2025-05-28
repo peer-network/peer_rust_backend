@@ -2,30 +2,46 @@ import { IPeerBackendAuthRepository } from "../../interfaces/repos/IPeerBackendA
 import { IBackendRepository } from "../../interfaces/repos/IPeerBackendRepository";
 import { IUseCase } from "../../interfaces/useCase/IUseCase"
 import {clientManager} from "../../app/api/client/client";
-import { CodeDescription } from "../../utils/errors/types";
+import { CodeDescription, ErrorResponse, ErrorHandler, ErrorFactory, ErrorCode } from "../../utils/errors";
 import CoreClientResponse from "../../domain/CoreClientResponse";
-import { IClientException } from "../../utils/errors/IClientException";
 import { IClientErrorCases } from "../../utils/errors/IClientErrorCases";
 import { IAuthServiceValidator } from "./validation/IAuthServiceValidator";
+import LoginClient from "../../utils/login";
 
 
 class AuthServiceErrors implements IClientErrorCases {
+    public AUTHENTICATION_FAILED: CodeDescription = {
+        code: ErrorCode.AUTHENTICATION_FAILED.toString(),
+        message: 'Authentication failed'
+    };
+    public VALIDATION_ERROR: CodeDescription = {
+        code: ErrorCode.VALIDATION_ERROR.toString(),
+        message: 'Validation error'
+    };
+    public CONFIGURATION_ERROR: CodeDescription = {
+        code: ErrorCode.CONFIGURATION_ERROR.toString(),
+        message: 'Configuration error'
+    };
+    public EXTERNAL_SERVICE_ERROR: CodeDescription = {
+        code: ErrorCode.EXTERNAL_SERVICE_ERROR.toString(),
+        message: 'External service error'
+    };
     public static TokenUpdateFailed : CodeDescription = {
-      code: "40000",
+      code: ErrorCode.EXTERNAL_SERVICE_ERROR.toString(),
       message: 'Token Update Failed'
     };
     public static NoResponseFromPeerBackend : CodeDescription = {
-      code: "40000",
+      code: ErrorCode.EXTERNAL_SERVICE_ERROR.toString(),
       message: 'No Response From Peer Backend'
     };
     public static TokenIsNull : CodeDescription = {
-      code: "40000",
+      code: ErrorCode.AUTHENTICATION_FAILED.toString(),
       message: 'Access Token is NULL'
     };
 }
 
 export class AuthService implements IUseCase {
-  errors = AuthServiceErrors;
+  errors = new AuthServiceErrors();
 
   constructor(
     private backendRepo: IBackendRepository,
@@ -37,7 +53,7 @@ export class AuthService implements IUseCase {
     try {
       const helloData = await this.backendRepo.getHelloData()
       if (!helloData) {
-        return CoreClientResponse.error(this.errors.NoResponseFromPeerBackend)
+        return CoreClientResponse.error(AuthServiceErrors.NoResponseFromPeerBackend)
       }
       const userId = helloData.currentuserid
 
@@ -50,13 +66,26 @@ export class AuthService implements IUseCase {
       return CoreClientResponse.success()
 
     } catch(e) {
-      const clientException = e as IClientException
-      
-      if (clientException && clientException.code) {
-        return CoreClientResponse.error(clientException)
-      }
-      const exception = e as Error
-      return CoreClientResponse.error(this.errors.TokenUpdateFailed,exception.name + "  " + exception.message)
+      // Use main ErrorHandler to handle any error type
+      const errorResponse = ErrorHandler.handle(e);
+      return CoreClientResponse.error(errorResponse);
+    }
+  }
+
+  static async authFunction(password: string, email: string): Promise<any> {
+    try {
+      const result = await LoginClient.login();
+      return result;
+    } catch (error: any) {
+      const errorResponse = ErrorFactory.authenticationFailed(error?.message || 'Unknown authentication error');
+      const response = {
+        success: false,
+        code: errorResponse.code.toString(),
+        message: errorResponse.message,
+        details: errorResponse.details
+      };
+      console.error("AuthService error:", response);
+      return response;
     }
   }
 }

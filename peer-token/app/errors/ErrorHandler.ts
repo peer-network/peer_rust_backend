@@ -12,6 +12,23 @@ export enum ErrorCode {
   TRANSACTION_FAILED = 601,
   ALREADY_MINTED_TODAY = 602,
   VALIDATION_ERROR = 701,
+  AUTHENTICATION_FAILED = 702,
+  AUTHORIZATION_DENIED = 703,
+  TOKEN_EXPIRED = 704,
+  MISSING_REQUIRED_FIELD = 705,
+  INVALID_FORMAT = 706,
+  OPERATION_NOT_ALLOWED = 707,
+  DAILY_LIMIT_EXCEEDED = 708,
+  RESOURCE_NOT_FOUND = 709,
+  RESOURCE_ALREADY_EXISTS = 710,
+  RESOURCE_LOCKED = 711,
+  CONNECTION_TIMEOUT = 712,
+  EXTERNAL_SERVICE_ERROR = 713,
+  RATE_LIMIT_EXCEEDED = 714,
+  WALLET_NOT_CONNECTED = 715,
+  INTERNAL_SERVER_ERROR = 716,
+  CONFIGURATION_ERROR = 717,
+  MAINTENANCE_MODE = 718,
 }
 
 // On-chain error codes from the Rust program
@@ -84,49 +101,175 @@ function extractOnChainErrorCode(error: any): number | null {
   return null;
 }
 
-// Simple Error Factory - only the most common ones
+// Production-level Error Factory
 export const ErrorFactory = {
+  // Authentication & Authorization
+  authenticationFailed: (reason?: string): ErrorResponse => ({
+    code: ErrorCode.AUTHENTICATION_FAILED,
+    message: `Authentication failed${reason ? `: ${reason}` : ''}`,
+    details: { reason, timestamp: new Date().toISOString() }
+  }),
+
+  authorizationDenied: (resource: string, action: string): ErrorResponse => ({
+    code: ErrorCode.AUTHORIZATION_DENIED,
+    message: `Access denied: insufficient permissions to ${action} ${resource}`,
+    details: { resource, action, timestamp: new Date().toISOString() }
+  }),
+
+  tokenExpired: (): ErrorResponse => ({
+    code: ErrorCode.TOKEN_EXPIRED,
+    message: 'Authentication token has expired. Please log in again.',
+    details: { timestamp: new Date().toISOString() }
+  }),
+
+  // Input Validation
+  validationError: (field: string, value?: any, constraint?: string): ErrorResponse => ({
+    code: ErrorCode.VALIDATION_ERROR,
+    message: `Invalid ${field}${constraint ? `: ${constraint}` : ''}`,
+    details: { field, value, constraint, timestamp: new Date().toISOString() }
+  }),
+
+  missingRequiredField: (field: string): ErrorResponse => ({
+    code: ErrorCode.MISSING_REQUIRED_FIELD,
+    message: `Required field '${field}' is missing`,
+    details: { field, timestamp: new Date().toISOString() }
+  }),
+
+  invalidFormat: (field: string, expectedFormat: string): ErrorResponse => ({
+    code: ErrorCode.INVALID_FORMAT,
+    message: `Invalid format for '${field}'. Expected: ${expectedFormat}`,
+    details: { field, expectedFormat, timestamp: new Date().toISOString() }
+  }),
+
+  // Business Logic
+  insufficientBalance: (required: number, available: number, currency: string = 'tokens'): ErrorResponse => ({
+    code: ErrorCode.INSUFFICIENT_BALANCE,
+    message: `Insufficient ${currency}. Required: ${required}, Available: ${available}`,
+    details: { required, available, currency, timestamp: new Date().toISOString() }
+  }),
+
+  operationNotAllowed: (operation: string, reason: string): ErrorResponse => ({
+    code: ErrorCode.OPERATION_NOT_ALLOWED,
+    message: `Operation '${operation}' is not allowed: ${reason}`,
+    details: { operation, reason, timestamp: new Date().toISOString() }
+  }),
+
+  dailyLimitExceeded: (limit: number, attempted: number): ErrorResponse => ({
+    code: ErrorCode.DAILY_LIMIT_EXCEEDED,
+    message: `Daily limit exceeded. Limit: ${limit}, Attempted: ${attempted}`,
+    details: { limit, attempted, resetTime: 'tomorrow', timestamp: new Date().toISOString() }
+  }),
+
+  // Resource Management
+  resourceNotFound: (resource: string, identifier: string): ErrorResponse => ({
+    code: ErrorCode.RESOURCE_NOT_FOUND,
+    message: `${resource} not found: ${identifier}`,
+    details: { resource, identifier, timestamp: new Date().toISOString() }
+  }),
+
+  resourceAlreadyExists: (resource: string, identifier: string): ErrorResponse => ({
+    code: ErrorCode.RESOURCE_ALREADY_EXISTS,
+    message: `${resource} already exists: ${identifier}`,
+    details: { resource, identifier, timestamp: new Date().toISOString() }
+  }),
+
+  resourceLocked: (resource: string, identifier: string, lockReason?: string): ErrorResponse => ({
+    code: ErrorCode.RESOURCE_LOCKED,
+    message: `${resource} is locked: ${identifier}${lockReason ? ` (${lockReason})` : ''}`,
+    details: { resource, identifier, lockReason, timestamp: new Date().toISOString() }
+  }),
+
+  // Network & External Services
+  connectionTimeout: (service: string, timeoutMs: number): ErrorResponse => ({
+    code: ErrorCode.CONNECTION_TIMEOUT,
+    message: `Connection to ${service} timed out after ${timeoutMs}ms`,
+    details: { service, timeoutMs, timestamp: new Date().toISOString() }
+  }),
+
+  externalServiceError: (service: string, statusCode?: number, message?: string): ErrorResponse => ({
+    code: ErrorCode.EXTERNAL_SERVICE_ERROR,
+    message: `External service error from ${service}${statusCode ? ` (${statusCode})` : ''}${message ? `: ${message}` : ''}`,
+    details: { service, statusCode, externalMessage: message, timestamp: new Date().toISOString() }
+  }),
+
+  rateLimitExceeded: (service: string, retryAfter?: number): ErrorResponse => ({
+    code: ErrorCode.RATE_LIMIT_EXCEEDED,
+    message: `Rate limit exceeded for ${service}${retryAfter ? `. Retry after ${retryAfter} seconds` : ''}`,
+    details: { service, retryAfter, timestamp: new Date().toISOString() }
+  }),
+
+  // Blockchain-specific Errors  
   mintNotFound: (mintAddress: PublicKey): ErrorResponse => ({
     code: ErrorCode.MINT_NOT_FOUND,
-    message: `Mint account not found: ${mintAddress.toString()}`,
-    details: { mintAddress: mintAddress.toString() }
+    message: `Token mint not found: ${mintAddress.toString()}`,
+    details: { mintAddress: mintAddress.toString(), timestamp: new Date().toISOString() }
   }),
 
   tokenAccountNotFound: (tokenAddress: PublicKey, owner: PublicKey): ErrorResponse => ({
     code: ErrorCode.TOKEN_ACCOUNT_NOT_FOUND,
     message: `Token account not found for owner: ${owner.toString()}`,
-    details: { tokenAddress: tokenAddress.toString(), owner: owner.toString() }
+    details: { tokenAddress: tokenAddress.toString(), owner: owner.toString(), timestamp: new Date().toISOString() }
   }),
 
-  metadataNotFound: (mintAddress: PublicKey): ErrorResponse => ({
-    code: ErrorCode.METADATA_NOT_FOUND,
-    message: `Metadata account not found for mint: ${mintAddress.toString()}`,
-    details: { mintAddress: mintAddress.toString() }
-  }),
-
-  transactionFailed: (operation: string, error: any): ErrorResponse => ({
+  transactionFailed: (operation: string, error: any, txSignature?: string): ErrorResponse => ({
     code: ErrorCode.TRANSACTION_FAILED,
-    message: `Transaction failed during ${operation}: ${error?.message || 'Unknown error'}`,
-    details: { operation, originalError: error?.message }
+    message: `Transaction failed during ${operation}: ${error?.message || 'Unknown blockchain error'}`,
+    details: { 
+      operation, 
+      originalError: error?.message, 
+      txSignature,
+      logs: error?.logs,
+      timestamp: new Date().toISOString() 
+    }
   }),
 
+  walletNotConnected: (): ErrorResponse => ({
+    code: ErrorCode.WALLET_NOT_CONNECTED,
+    message: 'Wallet is not connected. Please connect your wallet to continue.',
+    details: { timestamp: new Date().toISOString() }
+  }),
+
+  // System Errors
+  internalServerError: (operation: string, error?: any): ErrorResponse => ({
+    code: ErrorCode.INTERNAL_SERVER_ERROR,
+    message: `Internal server error during ${operation}`,
+    details: { 
+      operation, 
+      errorId: Math.random().toString(36).substring(7),
+      timestamp: new Date().toISOString()
+    }
+  }),
+
+  configurationError: (setting: string, issue: string): ErrorResponse => ({
+    code: ErrorCode.CONFIGURATION_ERROR,
+    message: `Configuration error for '${setting}': ${issue}`,
+    details: { setting, issue, timestamp: new Date().toISOString() }
+  }),
+
+  maintenanceMode: (estimatedEndTime?: string): ErrorResponse => ({
+    code: ErrorCode.MAINTENANCE_MODE,
+    message: `Service is currently under maintenance${estimatedEndTime ? `. Expected completion: ${estimatedEndTime}` : ''}`,
+    details: { estimatedEndTime, timestamp: new Date().toISOString() }
+  }),
+
+  // Legacy compatibility methods
   alreadyMintedToday: (): ErrorResponse => ({
-    code: ErrorCode.ALREADY_MINTED_TODAY,
+    code: ErrorCode.DAILY_LIMIT_EXCEEDED,
     message: "Tokens have already been minted today. Try again tomorrow.",
-    details: null
-  }),
-
-  connectionFailed: (endpoint: string): ErrorResponse => ({
-    code: ErrorCode.CONNECTION_FAILED,
-    message: `Failed to connect to Solana RPC: ${endpoint}`,
-    details: { endpoint }
+    details: { timestamp: new Date().toISOString() }
   }),
 
   walletNotFound: (path: string): ErrorResponse => ({
     code: ErrorCode.WALLET_NOT_FOUND,
     message: `Wallet file not found: ${path}`,
-    details: { path }
+    details: { path, timestamp: new Date().toISOString() }
   }),
+
+  connectionFailed: (endpoint: string): ErrorResponse => ({
+    code: ErrorCode.CONNECTION_FAILED,
+    message: `Failed to connect to Solana RPC: ${endpoint}`,
+    details: { endpoint, timestamp: new Date().toISOString() }
+  })
 };
 
 // Simple Error Handler Class
@@ -176,7 +319,7 @@ export class ErrorHandler {
       const message = error.message.toLowerCase();
       
       if (message.includes('already minted today') || message.includes('alreadymintedtoday')) {
-        const response = ErrorFactory.alreadyMintedToday();
+        const response = ErrorFactory.dailyLimitExceeded(1, 1);
         console.error(`Error [${response.code}]: ${response.message}`);
         return response;
       }
@@ -258,6 +401,13 @@ export class ErrorHandler {
           message: "Unable to connect to the Solana network. Please check your internet connection and try again.",
           details: { originalError: error.message }
         };
+        console.error(`Error [${response.code}]: ${response.message}`);
+        return response;
+      }
+
+      // Client-specific error patterns
+      if (message.includes('object contents') && message.includes('invalid')) {
+        const response = ErrorFactory.validationError('object contents', error.message, 'must be valid');
         console.error(`Error [${response.code}]: ${response.message}`);
         return response;
       }

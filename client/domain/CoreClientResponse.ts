@@ -1,5 +1,4 @@
-import { CodeDescription } from '../utils/errors';
-import { IClientException } from '../utils/errors/IClientException';
+import { CodeDescription, ErrorResponse } from '../utils/errors';
 import { logger } from '../utils/logger';
 
 export default class CoreClientResponse<TData> {
@@ -32,10 +31,10 @@ export default class CoreClientResponse<TData> {
     return new CoreClientResponse(resultCode, resultMessage, data);
   }
 
-  public static error<TData>(clientException: IClientException , optionalMessage? : string,data?: TData): CoreClientResponse<TData>;
+  public static error<TData>(errorResponse: ErrorResponse , optionalMessage? : string,data?: TData): CoreClientResponse<TData>;
   public static error<TData>(codeDescription: CodeDescription , optionalMessage? : string,data?: TData): CoreClientResponse<TData>;
-  public static error<TData>(error: CodeDescription | IClientException , optionalMessage : string = "",data?: TData): CoreClientResponse<TData> {
-    const resultCode: string = error.code;
+  public static error<TData>(error: CodeDescription | ErrorResponse , optionalMessage : string = "",data?: TData): CoreClientResponse<TData> {
+    const resultCode: string = error.code.toString();
     const resultMessage: string = error.message + " " + optionalMessage;
     logger.error(
       resultCode,
