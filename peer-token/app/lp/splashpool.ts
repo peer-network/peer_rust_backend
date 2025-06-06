@@ -18,7 +18,7 @@ async function main() {
   // Check token mint info of the both tokens 
 
   
-  const tokenMintOne = address("AkQwr5mHtAveaaCRGMJbrmBHLhxuUcKx6B3MpB95huxi");
+  const tokenMintOne = address("AkQwr5mHtAveaaCRGMJbrmBHLhxuUcKx6B3MpB95huxi"); 
   const tokenMintTwo = address("6vqALHHTP6NkMgzCJzaLDiwJLFGrBqM7kxMBj66EG2GB"); // USDC (devnet)
   const initialPrice = 0.01;
   const connection = getSolanaConnection();

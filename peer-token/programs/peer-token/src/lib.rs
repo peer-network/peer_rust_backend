@@ -9,6 +9,8 @@ pub use instructions::metadata::*;
 pub use instructions::user_token_account::*;
 pub use instructions::daily_mint::*;
 pub use instructions::airdrop::*;
+pub use instructions::admin_action::*;
+pub use instructions::mint_to_wallet::*;
 
 
 declare_id!("CMRPFUKz3nXiGZYcwQYaBFCdZubkeBKpx81Nm2Q9r8Ty");
@@ -57,5 +59,14 @@ pub mod peer_token {
         amount: u64
     ) -> Result<()> {
         instructions::airdrop::transfer_tokens_handler(ctx, amount)
+  }
+
+  //Admin actions
+  pub fn admin_action(ctx: Context<AdminAction>, args: TokenMetadataArgs) -> Result<()> {
+    instructions::admin_action::handler(ctx, args)
+  }
+
+  pub fn mint_to_wallet(ctx: Context<MintToWallet>, amount: u64) -> Result<()> {
+    instructions::admin_action::mint_to_wallet(ctx, amount)
   }
 }

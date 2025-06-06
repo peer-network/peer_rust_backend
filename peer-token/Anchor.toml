@@ -17,7 +17,7 @@ url = "https://api.apr.dev/"
 
 [provider]
 cluster = "https://api.devnet.solana.com"
-wallet = "keys/Wallets/Company.json"
+wallet = "keys/Wallets/admin.json"
 
 
 [scripts]
