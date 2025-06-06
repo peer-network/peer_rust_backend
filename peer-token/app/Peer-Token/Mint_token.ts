@@ -7,7 +7,9 @@ import {
 } from "@solana/spl-token";
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
-import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utilss";
+import { getPublicKey, getSolanaConnection, getKeypairFromEnvPath, getIdl } from "../../utils";
+import { ErrorHandler, ErrorFactory, ErrorCode } from "../errors";
+
 dotenv.config();
 
 // Set up the program ID (update with your deployed program ID)
@@ -68,33 +70,39 @@ async function main() {
                 console.log("🔹 Mint Authority:", mintInfo.mintAuthority?.toString() || "None");
                 console.log("🔹 Freeze Authority:", mintInfo.freezeAuthority?.toString() || "None");
             } catch (error) {
-                console.log("❌ Could not fetch detailed mint info:", error instanceof Error ? error.message : error);
+                ErrorHandler.handle(error);
+                console.log("❌ Could not fetch detailed mint info");
             }
         } else {
             console.log("❓ Mint account does not exist. Creating it now...");
 
-            // Create the token mint
-            const tx = await program.methods
-                .createToken()
-                .accounts({
-                    peerAuthority: companyWallet.publicKey,
-                    peerMint: mintPda,
-                    systemProgram: SystemProgram.programId,
-                    tokenProgram: TOKEN_2022_PROGRAM_ID,
-                    rent: anchor.web3.SYSVAR_RENT_PUBKEY
-                })
-                .rpc();
-            
-            console.log("✅ Token mint created successfully");
-            console.log("🔹 Transaction:", tx);
-            console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${tx}?cluster=devnet`);
-            
-            // Verify the mint was created
-            console.log("\n🔍 Verifying mint creation...");
-            const mintInfo = await connection.getAccountInfo(mintPda);
-            console.log("✅ Mint Account Created:", mintInfo !== null);
-            
-            if (mintInfo) {
+            try {
+                // Create the token mint
+                const tx = await program.methods
+                    .createToken()
+                    .accounts({
+                        peerAuthority: companyWallet.publicKey,
+                        peerMint: mintPda,
+                        systemProgram: SystemProgram.programId,
+                        tokenProgram: TOKEN_2022_PROGRAM_ID,
+                        rent: anchor.web3.SYSVAR_RENT_PUBKEY
+                    })
+                    .rpc();
+                
+                console.log("✅ Token mint created successfully");
+                console.log("🔹 Transaction:", tx);
+                console.log("🔹 Explorer URL:", `https://explorer.solana.com/tx/${tx}?cluster=devnet`);
+                
+                // Verify the mint was created
+                console.log("\n🔍 Verifying mint creation...");
+                const mintInfo = await connection.getAccountInfo(mintPda);
+                
+                if (!mintInfo) {
+                    throw ErrorFactory.mintNotFound(mintPda);
+                }
+                
+                console.log("✅ Mint Account Created:", mintInfo !== null);
+                
                 try {
                     // Get token mint info
                     const tokenMintInfo = await getMint(
@@ -107,16 +115,17 @@ async function main() {
                     console.log("🔹 Mint Authority:", tokenMintInfo.mintAuthority?.toString());
                     console.log("🔹 Freeze Authority:", tokenMintInfo.freezeAuthority?.toString());
                 } catch (error) {
-                    console.log("❌ Could not fetch detailed mint info:", error instanceof Error ? error.message : error);
+                    ErrorHandler.handle(error);
+                    console.log("❌ Could not fetch detailed mint info");
                 }
+            } catch (error) {
+                throw ErrorFactory.transactionFailed("create token mint", error);
             }
         }
     } catch (error) {
-        console.error("\n❌ ERROR:", error);
-        if (error instanceof Error) {
-            console.error("Error message:", error.message);
-            console.error("Error stack:", error.stack);
-        }
+        console.error("\n❌ ERROR DURING TOKEN MINT:");
+        ErrorHandler.handle(error);
+        process.exit(1);
     }
 }
 

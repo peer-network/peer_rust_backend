@@ -1,0 +1,30 @@
+# Anchor and Solana specific
+.anchor
+target
+**/*.rs.bk
+test-ledger
+.ata-validator
+keys
+
+# Node.js dependencies
+node_modules
+
+# Environment files
+.env
+*.env
+env
+
+# Package manager files
+.yarn
+yarn-error.log
+
+# IDE and OS files
+.DS_Store
+.cursor
+
+# Build outputs
+dist
+build
+
+# Logs
+*.log 

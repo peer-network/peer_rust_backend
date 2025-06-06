@@ -3,9 +3,13 @@ use anchor_spl::{
     associated_token::AssociatedToken,
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
+use crate::error::PeerTokenError;
 
 
 pub fn handler(ctx: Context<CreateUserTokenAccountArgs>) -> Result<()> {
+    // Validate mint
+    require!(ctx.accounts.peer_mint.is_initialized, PeerTokenError::InvalidMint);
+    
     msg!("Creating user associated token account for mint: {}", ctx.accounts.peer_mint.key());
     msg!("Owner (user): {}", ctx.accounts.user_wallet.key());
     msg!("Fee payer (company): {}", ctx.accounts.peer_mint.key());
@@ -24,9 +28,11 @@ pub struct CreateUserTokenAccountArgs<'info> {
     pub user_wallet: AccountInfo<'info>,
     
     /// The token mint this ATA will be associated with
+    #[account(
+        constraint = peer_mint.is_initialized @ PeerTokenError::InvalidMint
+    )]
     pub peer_mint: InterfaceAccount<'info, Mint>,
     
-  
     #[account(
         init,
         payer = peer_authority,
@@ -35,7 +41,6 @@ pub struct CreateUserTokenAccountArgs<'info> {
         associated_token::authority = user_wallet,
     )]
     pub user_token_account: InterfaceAccount<'info, TokenAccount>,
-    
     
     pub system_program: Program<'info, System>,
     

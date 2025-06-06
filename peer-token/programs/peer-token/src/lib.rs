@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 
 pub mod instructions;
+pub mod error;
 
 pub use instructions::associated_account::*;
 pub use instructions::mint_token::*;
@@ -14,6 +15,9 @@ pub use instructions::mint_to_wallet::*;
 
 
 declare_id!("CMRPFUKz3nXiGZYcwQYaBFCdZubkeBKpx81Nm2Q9r8Ty");
+
+pub use error::*;
+
 
 
 #[program]
