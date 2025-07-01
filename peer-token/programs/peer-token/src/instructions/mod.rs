@@ -8,10 +8,12 @@ pub mod admin_action;
 
 
 
+
 // Token operations
 pub mod user_token_account;  
 pub mod daily_mint;  // User token account with company as fee payer
 pub mod airdrop;        // Token airdrop and distribution
+pub mod user_action;
 
 
 // Re-export account structs with clear naming
@@ -22,4 +24,5 @@ pub use user_token_account::*;
 pub use daily_mint::*;
 pub use airdrop::*;
 pub use admin_action::*;
+pub use user_action::*;
 

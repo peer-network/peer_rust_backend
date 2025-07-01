@@ -31,7 +31,7 @@ async function main() {
         
         // Load wallet keypair
         const keypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
+            Buffer.from(JSON.parse(fs.readFileSync(process.env.ADMIN_WALLET_PATH!, "utf-8")))
         );
         console.log("\n💳 Using wallet:", keypair.publicKey.toString());
 

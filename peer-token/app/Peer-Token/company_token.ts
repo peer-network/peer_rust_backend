@@ -30,7 +30,7 @@ async function main() {
         // Load company wallet keypair
         // const companyKeypairPath = "/Users/macbookpro/Solana/keys/wallet.json";
         const keypair = Keypair.fromSecretKey(
-            Buffer.from(JSON.parse(fs.readFileSync(process.env.COMPANY_WALLET_PATH!, "utf-8")))
+            Buffer.from(JSON.parse(fs.readFileSync(process.env.ADMIN_WALLET_PATH!, "utf-8")))
         );
         console.log("\n💼 Company wallet:", keypair.publicKey.toString());
 

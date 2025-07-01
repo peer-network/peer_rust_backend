@@ -6,7 +6,7 @@ import { setRpc } from '@orca-so/tx-sender';
 async function main() {
 await setWhirlpoolsConfig('solanaDevnet');
 await setRpc('https://api.devnet.solana.com');
-const keypair = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+const keypair = getKeypairFromEnvPath("ADMIN_WALLET_PATH");
 const signer = await setPayerFromBytes(new Uint8Array(keypair.secretKey));
 const whirlpoolAddress = address("Ev6nbffpMhogRNyFRcV8XWPivkjrXrjkT44cmbXsvVKK");
 const mintAddress = address("23Je5YSuebuqrpckZoudWrqiiCpSHMpuM834JSQxKBRU");

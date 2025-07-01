@@ -20,7 +20,7 @@ import { ErrorHandler, ErrorFactory, ErrorCode, Validators } from "../errors";
 // Set up the program ID
 const program_id = getPublicKey("PROGRAM_ID");
 const connection = getSolanaConnection();
-const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+const companyWallet = getKeypairFromEnvPath("ADMIN_WALLET_PATH");
 const idl = getIdl();
 
 export async function main(tokendata: TokenDistribution) {

@@ -14,13 +14,19 @@ import { BN } from "bn.js";
 // import * as dotenv from 'dotenv';
 import { getPublicKey, getKeypairFromEnvPath, getSolanaConnection, getIdl, getTokenDecimals, getDailyMintAmount } from "../../utils";
 import { tokenDistribution } from "../mockdata/distribution";
-import { ErrorHandler, ErrorFactory, ErrorCode, Validators } from "../errors";
+import { 
+  ProductionErrorHandler, 
+  ErrorFactory, 
+  ErrorCode, 
+  Validators,
+  withRecovery
+} from "../errors";
 
 
 // Load environment variables
 // dotenv.config();
 const connection = getSolanaConnection();
-const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+const companyWallet = getKeypairFromEnvPath("ADMIN_WALLET_PATH");
 const idl = getIdl();
 const token_decimals = getTokenDecimals("TOKEN_DECIMALS");
 const daily_mint_amount = getDailyMintAmount("DAILY_MINT_AMOUNT");
@@ -184,7 +190,7 @@ async function mintToCompany(
         console.log("\n💰 Company Token Balance:", tokenAccountInfo.value.uiAmount);
         
     } catch (error) {
-        const errorInfo = ErrorHandler.handle(error);
+        const errorInfo = ProductionErrorHandler.handle(error);
         
         // Business logic: "Already minted today" is not a failure condition
         if (errorInfo.code === ErrorCode.ALREADY_MINTED_TODAY) {

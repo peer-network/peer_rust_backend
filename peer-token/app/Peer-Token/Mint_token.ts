@@ -14,7 +14,7 @@ dotenv.config();
 
 // Set up the program ID (update with your deployed program ID)
 const program_id = getPublicKey("PROGRAM_ID");
-const companyWallet = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+const companyWallet = getKeypairFromEnvPath("ADMIN_WALLET_PATH");
 const connection = getSolanaConnection();
 const idl = getIdl();
 

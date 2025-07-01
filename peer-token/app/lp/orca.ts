@@ -35,7 +35,7 @@ import {
   async function main() {
     try {
       const connection = getSolanaConnection();
-      const keypair = getKeypairFromEnvPath('COMPANY_WALLET_PATH');
+      const keypair = getKeypairFromEnvPath('ADMIN_WALLET_PATH');
       const wallet = new Wallet(keypair);
       
 

@@ -11,7 +11,8 @@ pub use instructions::user_token_account::*;
 pub use instructions::daily_mint::*;
 pub use instructions::airdrop::*;
 pub use instructions::admin_action::*;
-pub use instructions::mint_to_wallet::*;
+// pub use instructions::mint_to_wallet::*;
+pub use instructions::user_action::*;
 
 
 declare_id!("CMRPFUKz3nXiGZYcwQYaBFCdZubkeBKpx81Nm2Q9r8Ty");
@@ -70,7 +71,11 @@ pub mod peer_token {
     instructions::admin_action::handler(ctx, args)
   }
 
-  pub fn mint_to_wallet(ctx: Context<MintToWallet>, amount: u64) -> Result<()> {
-    instructions::admin_action::mint_to_wallet(ctx, amount)
-  }
+//   pub fn mint_to_wallet(ctx: Context<MintToWallet>, amount: u64) -> Result<()> {
+//     instructions::admin_action::mint_to_wallet(ctx, amount)
+//   }
+
+    pub fn user_action(ctx: Context<UserAction>) -> Result<()> {
+        instructions::user_action::user_handler(ctx)
+    }
 }

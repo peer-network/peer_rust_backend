@@ -15,7 +15,7 @@ import {
 
     const devnetRpc = createSolanaRpc(devnet('https://api.devnet.solana.com'));
 
-    const keypair = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+    const keypair = getKeypairFromEnvPath("ADMIN_WALLET_PATH");
     const signer = await setPayerFromBytes(new Uint8Array(keypair.secretKey));
   
     const positionMintAddress = address('23Je5YSuebuqrpckZoudWrqiiCpSHMpuM834JSQxKBRU');

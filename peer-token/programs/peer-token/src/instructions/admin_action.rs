@@ -9,7 +9,6 @@ use anchor_spl::token_2022::{
 
 use anchor_spl::system_program::{transfer, Transfer};
 
-
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct TokenMetadataArgs {
     pub name: String,
@@ -56,18 +55,18 @@ pub struct AdminAction<'info> {
 
 // All Token Accounts Initialization 
     #[account(
-    init,
-    payer = admin_wallet,
-    associated_token::mint = peer_mint,
-    associated_token::token_program = token_program,
-    associated_token::authority = admin_wallet,
+        init,
+        payer = admin_wallet,
+        associated_token::mint = peer_mint,
+        associated_token::token_program = token_program,
+        associated_token::authority = admin_wallet,
     )]
     pub admin_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         init,
-        associated_token::mint = peer_mint,
         payer = admin_wallet,
+        associated_token::mint = peer_mint,
         associated_token::token_program = token_program,
         associated_token::authority = mint_wallet,
     )]
@@ -76,8 +75,8 @@ pub struct AdminAction<'info> {
 
     #[account(
         init,
-        associated_token::mint = peer_mint,
         payer = admin_wallet,
+        associated_token::mint = peer_mint,
         associated_token::token_program = token_program,
         associated_token::authority = storage_wallet,
     )]
@@ -86,8 +85,8 @@ pub struct AdminAction<'info> {
 
     #[account(
         init,
-        associated_token::mint = peer_mint,
         payer = admin_wallet,
+        associated_token::mint = peer_mint,
         associated_token::token_program = token_program,
         associated_token::authority = lp_wallet,
     )]
@@ -95,8 +94,8 @@ pub struct AdminAction<'info> {
 
     #[account(
         init,
-        associated_token::mint = peer_mint,
         payer = admin_wallet,
+        associated_token::mint = peer_mint,
         associated_token::token_program = token_program,
         associated_token::authority = peer_wallet,
     )]

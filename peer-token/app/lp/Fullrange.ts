@@ -11,7 +11,7 @@ async function main() {
   const devnetRpc = createSolanaRpc(devnet('https://api.devnet.solana.com'));
 
   // Load wallet (should return a Keypair or WalletAdapter-compatible object)
-  const keypair = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+  const keypair = getKeypairFromEnvPath("ADMIN_WALLET_PATH");
   const signer = await setPayerFromBytes(new Uint8Array(keypair.secretKey));
 
 

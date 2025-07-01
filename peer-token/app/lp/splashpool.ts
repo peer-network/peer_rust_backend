@@ -10,7 +10,7 @@ import { Connection } from '@solana/web3.js';
 async function main() {
 
 
-  const keypair = getKeypairFromEnvPath("COMPANY_WALLET_PATH");
+  const keypair = getKeypairFromEnvPath("ADMIN_WALLET_PATH");
   await setWhirlpoolsConfig('solanaDevnet');
   await setRpc('https://api.devnet.solana.com');
   const signer = await setPayerFromBytes(new Uint8Array(keypair.secretKey));
