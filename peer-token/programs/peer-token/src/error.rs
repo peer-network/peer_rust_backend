@@ -40,6 +40,18 @@ pub enum PeerTokenError {
     /// 6008 - Metadata creation failed
     #[msg("Metadata creation failed")]
     MetadataCreationFailed,
+
+    /// 6009 - Unauthorized Error 
+    #[msg("Unauthorized Token Account")]
+    UnauthorizedTokenAccount,
+
+    /// 6010 UninitializedTokenAccount
+    #[msg("Token account not Initialized")]
+    UninitializedTokenAccount,
+
+    /// 6011 UnauthorizedSigner
+    #[msg(" Unauthorized Signer")]
+    UnauthorizedSigner,
 }
 
 impl From<PeerTokenError> for ProgramError {

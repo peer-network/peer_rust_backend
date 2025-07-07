@@ -215,3 +215,5 @@ export async function mint(): Promise<MintResponseImpl> {
         );
     }
 }
+
+mint();

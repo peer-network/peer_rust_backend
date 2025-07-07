@@ -11,6 +11,7 @@ pub mod metadata;        // Create and manage token metadata
 pub mod user_token_account;  
 pub mod daily_mint;  // User token account with company as fee payer
 pub mod airdrop;        // Token airdrop and distribution
+pub mod useraction;
 
 
 // Re-export account structs with clear naming
@@ -20,4 +21,5 @@ pub use associated_account::*;
 pub use user_token_account::*;
 pub use daily_mint::*;
 pub use airdrop::*;
+pub use useraction::*;
 

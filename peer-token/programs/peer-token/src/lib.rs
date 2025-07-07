@@ -10,10 +10,11 @@ pub use instructions::metadata::*;
 pub use instructions::user_token_account::*;
 pub use instructions::daily_mint::*;
 pub use instructions::airdrop::*;
+pub use instructions::useraction::*;
 pub use error::*;
 
 
-declare_id!("2UwS529cAMPeXwqEuF9P2HvZ1Y5ggTt4616PpC7uW1Tj");
+declare_id!("9HmTP6ct3xSwHYPg3CwLftYw1trf75UVNx63gE95Qk8R");
 
 
 #[program]
@@ -55,9 +56,16 @@ pub mod peer_token {
     
     /// Transfers tokens to a recipient wallet
     pub fn transfer_tokens(
-        ctx: Context<TransferTokens>,
+        ctx: Context<Airdrop>,
         amount: u64
     ) -> Result<()> {
         instructions::airdrop::transfer_tokens_handler(ctx, amount)
   }
+
+    pub fn user_action(
+        ctx: Context<TransferToken>, 
+        amount: u64
+    ) -> Result<()> {
+        instructions::useraction::transfer_handler(ctx, amount)
+    }
 }

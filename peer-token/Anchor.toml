@@ -8,7 +8,7 @@ skip-lint = false
 
 
 
-peer_token = "2UwS529cAMPeXwqEuF9P2HvZ1Y5ggTt4616PpC7uW1Tj"
+peer_token = "9HmTP6ct3xSwHYPg3CwLftYw1trf75UVNx63gE95Qk8R"
 
 
 [registry]
@@ -16,7 +16,7 @@ url = "https://api.apr.dev/"
 
 [provider]
 cluster = "https://api.devnet.solana.com"
-wallet = "keys/Wallets/Company.json"
+wallet = "keys/Wallets/admin.json"
 
 
 [scripts]

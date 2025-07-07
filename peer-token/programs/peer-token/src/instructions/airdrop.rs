@@ -14,7 +14,7 @@ pub struct RecipientData {
 
 /// Need to add the functionality check whether the user has recieved the tokens or not
 
-pub fn transfer_tokens_handler(ctx: Context<TransferTokens>, amount: u64) -> Result<()> {
+pub fn transfer_tokens_handler(ctx: Context<Airdrop>, amount: u64) -> Result<()> {
     // Validate inputs
     require!(amount > 0, PeerTokenError::InvalidTransferAmount);
     
@@ -42,7 +42,7 @@ pub fn transfer_tokens_handler(ctx: Context<TransferTokens>, amount: u64) -> Res
    
 /// Accounts required for token transfer
 #[derive(Accounts)]
-pub struct TransferTokens<'info> {
+pub struct Airdrop<'info> {
     #[account(mut)]
     pub peer_authority: Signer<'info>,
 
