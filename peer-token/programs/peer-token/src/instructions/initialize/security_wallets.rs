@@ -100,14 +100,14 @@ pub fn security_handler(ctx: Context<InitializeSecurityWallets>) -> Result<()> {
 
     // Double time Initialization Check (lp Wallet)
     require_eq!(
-        ctx.accounts.lp_wallet.key(),
+        config.wallets.lp_wallet.key(),
         Pubkey::default(),
         PeerTokenError::AlreadyInitialized
     );
 
      // Double time Initialization Check (Minting Wallet)
      require_eq!(
-        ctx.accounts.minting_wallet.key(),
+        config.wallets.minting_wallet.key(),
         Pubkey::default(),
         PeerTokenError::AlreadyInitialized
     );

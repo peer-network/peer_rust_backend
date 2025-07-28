@@ -94,14 +94,14 @@ pub fn system_handler(ctx: Context<InitializeSystemWallets>) -> Result<()> {
 
     // Double time Initialization Check (Treasury Wallet)
     require_eq!(
-        ctx.accounts.treasury_wallet.key(),
+        config.wallets.treasury_wallet.key(),
         Pubkey::default(),
         PeerTokenError::AlreadyInitialized
     );
 
      // Double time Initialization Check (Fee Wallet)
      require_eq!(
-        ctx.accounts.fee_wallet.key(),
+        config.wallets.fee_wallet.key(),
         Pubkey::default(),
         PeerTokenError::AlreadyInitialized
     );
