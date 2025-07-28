@@ -1,23 +1,22 @@
 [toolchain]
-rust = "1.85.1"
-solana = "1.18.25"
 
 [features]
 seeds = false
 skip-lint = false
 
-
-
-peer_token = "9HmTP6ct3xSwHYPg3CwLftYw1trf75UVNx63gE95Qk8R"
-
+[programs.devnet]
+peer_token = "AafYBboNkNW5UKurnvBKLqkiuoD8sEcEZrZnRCuWScEV"
 
 [registry]
-url = "https://api.apr.dev/"
+url = "https://api.apr.dev"
+
+
+[test]
+upgradeable = true
 
 [provider]
-cluster = "https://api.devnet.solana.com"
+cluster = "Devnet"
 wallet = "keys/Wallets/admin.json"
-
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
