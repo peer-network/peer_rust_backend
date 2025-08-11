@@ -6,9 +6,4 @@ target
 node_modules
 test-ledger
 .yarn
-env 
-.ata-validator
 keys
-utils
-*.env
-
