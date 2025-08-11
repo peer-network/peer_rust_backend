@@ -7,7 +7,7 @@ pub mod errors;
 
 pub use instructions::*;
 
-declare_id!("AafYBboNkNW5UKurnvBKLqkiuoD8sEcEZrZnRCuWScEV");
+declare_id!("2PfkQSFbtTacMG56GqMkm12V2VuVDLqM17gSbvAiwtbw");
 
 
 #[program]
@@ -27,6 +27,10 @@ pub mod peer_token {
     /// Initialize security wallets (LP & Minting)
     pub fn initialize_security_wallets(ctx: Context<InitializeSecurityWallets>) -> Result<()> {
         instructions::initialize::security_wallets::security_handler(ctx)
+    }
+
+    pub fn daily_mint_exec(ctx: Context<DailyMint>) -> Result<()> {
+        instructions::minting::daily_mint::daily_mint_handler(ctx)
     }
 }
 

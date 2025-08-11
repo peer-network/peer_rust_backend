@@ -35,7 +35,7 @@ pub struct Peertoken<'info> {
     pub peer_mint : InterfaceAccount<'info, Mint>,
     ///CHECK: PDA 
     #[account(
-        seeds = [TOKEN_STATE],
+        seeds = [MINTAUTH_SEED],
         bump
     )]
     pub mint_authority : UncheckedAccount<'info>,

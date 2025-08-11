@@ -5,9 +5,9 @@
 
 // seeds
 pub const CONFIG_SEED: &[u8] = b"peer-config";  // For ProgramConfig PDA
-pub const MINT_SEED: &[u8] = b"peer-mint";     // For mint account PDA
+pub const MINT_SEED: &[u8] = b"peer-mint";     // For Mint account PDA
+pub const MINTAUTH_SEED: &[u8] = b"peer-mint-authority";  // For Mint authority PDA
 pub const TREASURY_SEED: &[u8] = b"peer-treasury"; // For Company ATA
-pub const TOKEN_STATE: &[u8] = b"peer-token-state";  // Unique identifier for our token state PDA
 pub const DAILY_MINT: &[u8] = b"daily-mint-record";  // For daily mint tracking
 pub const FEE_WALLET_SEED: &[u8] = b"peer-fee-wallet";
 pub const MINTING_VAULT_SEED: &[u8] = b"peer-minting-vault";
