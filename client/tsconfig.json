@@ -19,5 +19,5 @@
             },
             "include": ["app/**/*", "tests/**/*", "utils/**/*", "codegen-old.ts", "domain/CoreClientResponse.ts", "useCases/Mint/validation/MintUseCaseValidatorImplZod.ts"],
             "exclude": ["node_modules", "dist"]
-          }
+            }
           
