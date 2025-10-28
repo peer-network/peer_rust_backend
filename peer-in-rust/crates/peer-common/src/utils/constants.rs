@@ -1,6 +1,5 @@
 
 
-
 pub const SERVER_HOST: &str = "127.0.0.1";
 pub const SERVER_PORT: u16 = 4000;
 pub const DEFAULT_WORKERS: usize = 4;
@@ -36,7 +35,7 @@ pub const TOKEN_SYMBOL: &str = "PEER";
 pub const TOKEN_DECIMALS: u8 = 9;
 pub const INITIAL_SUPPLY: u64 = 19_500_000;
 pub const TOKEN_DESCRIPTION: &str = "PEER is the social token powering the peer-to-peer revolution, enabling direct value exchange in social ecosystems.";
-pub const TOKEN_IMAGE_URI: &str = "https://peer.inc/assets/peer-token-logo.png";
+pub const TOKEN_IMAGE_URI: &str = "https://raw.githubusercontent.com/devcrypt6/metadata_solana/refs/heads/master/metadata.json";
 pub const MINT_AUTHORITY_SEED: &str = "peer_mint_authority";
 
 

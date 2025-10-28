@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 static GUARD_STORAGE: OnceLock<Arc<Mutex<Option<non_blocking::WorkerGuard>>>> = OnceLock::new();
 
-pub fn initialize_production_logging(app_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn initialize_logging(app_name: &str) -> Result<(), Box<dyn std::error::Error>> {
     let logs_dir = "logs";
     if !Path::new(logs_dir).exists() {
         std::fs::create_dir_all(logs_dir)?;

@@ -1,0 +1,24 @@
+{
+  "status": "Created",
+  "result": {
+    "mint_address": "7jJXJo1tt6ZbT7kmjwne8Sbi6imxkY55A7Jyonj2fZD3",
+    "mint_authority": "Hsvppi3GB7rjRg9soJTJZhAacogiVqyk8Z3TkMQgopyc",
+    "admin_token_account": "9izzes1LVRcgKqTW3dxM6AsgpdPq7nGUJBUbYP7RY34u",
+    "initial_supply": 19500000,
+    "creation_signature": "8KYvjzbW8sry76nkytpCVxJTFUKSVbg2KnHbAfNZW7WHLNsPrYKYcspGhfaKbRhrtyCxa1z7jkjQJUCtqJRigRK",
+    "minting_signature": "5DPvWGdnf72ZNeJRzQjUNsQVcXWqMAFK4hHpsvEWRHYV4CVHyPA5pCiwv1cHs1n3LzBjtBkYx7McWh8Yeq1wXViz",
+    "mint_lock_status": false,
+    "creation_timestamp": 1761227311,
+    "cluster": "devnet"
+  },
+  "creation_timestamp": 1761227307,
+  "lock_timestamp": null,
+  "creation_stats": {
+    "total_cost_sol": 0.006269,
+    "mint_creation_cost": 0.00422472,
+    "account_creation_cost": 0.00203928,
+    "minting_cost": 5e-6,
+    "total_transactions": 2,
+    "creation_duration_ms": 3557
+  }
+}

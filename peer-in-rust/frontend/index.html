@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEER Token - GraphQL Testing</title>
+    
+    <!-- Solana Web3.js for transaction handling -->
+    <script src="https://unpkg.com/@solana/web3.js@^1.87.6/lib/index.iife.min.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .loading {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .endpoint-config {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+        }
+        
+        .step-number {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 25px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>🪙 PEER Token - GraphQL API Testing</h1>
+    
+    <div class="container endpoint-config">
+        <strong>GraphQL Endpoint:</strong> <span id="endpoint">http://127.0.0.1:4000/graphql</span>
+        <br><small>Make sure your Rust server is running: <code>cargo run --bin server</code></small>
+    </div>
+
+    <!-- Step 1: Wallet Validation -->
+    <div class="container test-section">
+        <h2><span class="step-number">1</span>Wallet Validation</h2>
+        <p>Test if a Solana wallet address is valid and exists on-chain.</p>
+        
+        <div class="form-group">
+            <label for="walletAddress">Wallet Address (Base58):</label>
+            <input type="text" id="walletAddress" placeholder="Enter Solana wallet address (44 characters)" value="">
+        </div>
+        
+        <button onclick="validateWallet()">Validate Wallet</button>
+        <button onclick="clearResult('walletResult')">Clear</button>
+        
+        <div id="walletResult" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Step 2: Token Account Check -->
+    <div class="container test-section">
+        <h2><span class="step-number">2</span>Token Account Check</h2>
+        <p>Check if a wallet has a PEER token account and get account details.</p>
+        
+        <div class="form-group">
+            <label for="tokenWalletAddress">Wallet Address:</label>
+            <input type="text" id="tokenWalletAddress" placeholder="Enter wallet address to check for PEER tokens" value="">
+        </div>
+        
+        <button onclick="checkTokenAccount()">Check Token Account</button>
+        <button onclick="clearResult('tokenResult')">Clear</button>
+        
+        <div id="tokenResult" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Step 3: Transform Initiation -->
+    <div class="container test-section">
+        <h2><span class="step-number">3</span>Transform Token (Complete Workflow)</h2>
+        <p>Complete multi-signature token transformation: Company authorizes, User signs & pays gas fees.</p>
+        
+        <div class="form-group">
+            <label for="transformWalletAddress">Wallet Address:</label>
+            <input type="text" id="transformWalletAddress" placeholder="Enter wallet address for transform" value="">
+        </div>
+        
+        <div class="form-group">
+            <label for="transformAmount">Amount (PEER tokens):</label>
+            <input type="number" id="transformAmount" placeholder="Enter amount to transform" value="1.0" step="0.1" min="0.1">
+        </div>
+        
+        <button onclick="initiateTransform()">Step 1: Initiate Transform</button>
+        <button onclick="confirmTransform()" id="confirmBtn" disabled>Step 2: Confirm & Prepare Transaction</button>
+        <button onclick="completeTransform()" id="completeBtn" disabled>Step 3: Complete Transform</button>
+        <button onclick="clearResult('transformResult')">Clear</button>
+        
+        <div id="transformResult" class="result" style="display: none;"></div>
+        
+        <!-- Transaction Status -->
+        <div id="transactionStatus" style="display: none; margin-top: 20px; padding: 15px; background-color: #e3f2fd; border-radius: 5px;">
+            <h4>🔄 Transaction Status</h4>
+            <p><strong>Session ID:</strong> <span id="sessionId">-</span></p>
+            <p><strong>State:</strong> <span id="transactionState">-</span></p>
+            <p><strong>Prepared Transaction:</strong> <span id="preparedTx" style="font-family: monospace; font-size: 10px; word-break: break-all;">-</span></p>
+        </div>
+    </div>
+
+    <!-- Step 4: Phantom Wallet Integration -->
+    <div class="container test-section">
+        <h2><span class="step-number">4</span>Phantom Wallet Integration</h2>
+        <p>Connect to Phantom wallet for transaction signing.</p>
+        
+        <button onclick="connectPhantom()">Connect Phantom Wallet</button>
+        <button onclick="signTransactionWithPhantom()" id="signBtn" disabled>Sign Transaction with Phantom</button>
+        <button onclick="checkPhantomStatus()" style="background-color: orange;">🐛 Debug Phantom Status</button>
+        
+        <div id="phantomResult" class="result" style="display: none;"></div>
+        
+        <!-- Wallet Status -->
+        <div id="walletStatus" style="display: none; margin-top: 20px; padding: 15px; background-color: #f3e5f5; border-radius: 5px;">
+            <h4>👻 Phantom Wallet Status</h4>
+            <p><strong>Connected:</strong> <span id="walletConnected">No</span></p>
+            <p><strong>Address:</strong> <span id="walletAddress">-</span></p>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="container">
+        <h2>🚀 Quick Actions</h2>
+        <button onclick="fillSampleWallet()">Fill Sample Wallet</button>
+        <button onclick="copyWalletToAll()">Copy Wallet to All Fields</button>
+        <button onclick="connectPhantom()">Connect Phantom</button>
+        <button onclick="clearAllResults()">Clear All Results</button>
+        
+        <!-- Instructions -->
+        <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-radius: 5px;">
+            <h4>📋 Transform Workflow Instructions:</h4>
+            <ol>
+                <li><strong>Test wallet validation</strong> - Ensure your wallet is valid</li>
+                <li><strong>Check token account</strong> - Verify PEER token account exists</li>
+                <li><strong>Connect Phantom wallet</strong> - Required for signing transactions</li>
+                <li><strong>Initiate transform</strong> - Start the token conversion process</li>
+                <li><strong>Confirm transform</strong> - Company prepares transaction</li>
+                <li><strong>Sign with Phantom</strong> - You sign and pay gas fees</li>
+                <li><strong>Complete transform</strong> - Submit to blockchain</li>
+            </ol>
+            <p><small><strong>Note:</strong> Make sure you have Phantom wallet installed and some SOL for gas fees!</small></p>
+        </div>
+    </div>
+
+    <script>
+        const GRAPHQL_ENDPOINT = 'http://127.0.0.1:4000/graphql';
+        
+        // Sample wallet for testing
+        const SAMPLE_WALLET = '11111111111111111111111111111112';
+        
+        // Transform workflow state
+        let currentSession = null;
+        let preparedTransaction = null;
+        let phantomWallet = null;
+        let phantomProvider = null;
+        
+        // FIXED: Proper Phantom detection according to official docs
+        const getPhantomProvider = () => {
+            if ('phantom' in window) {
+                const provider = window.phantom?.solana;
+                if (provider?.isPhantom) {
+                    console.log('Phantom found via window.phantom.solana');
+                    return provider;
+                }
+            }
+            
+            // Fallback check for window.solana
+            if ('solana' in window && window.solana?.isPhantom) {
+                console.log('Phantom found via window.solana');
+                return window.solana;
+            }
+            
+            return null;
+        };
+        
+        // FIXED: Enhanced detection with proper timing
+        const detectPhantom = async (maxRetries = 50, delayMs = 100) => {
+            console.log('Starting enhanced Phantom detection...');
+            
+            for (let i = 0; i < maxRetries; i++) {
+                const provider = getPhantomProvider();
+                if (provider) {
+                    console.log(`Phantom detected on attempt ${i + 1}`);
+                    phantomProvider = provider;
+                    return true;
+                }
+                
+                console.log(`Phantom check ${i + 1}/${maxRetries}...`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+            }
+            
+            console.log('Phantom not detected after all attempts');
+            return false;
+        };
+        
+        async function makeGraphQLRequest(query, variables = {}) {
+            try {
+                const response = await fetch(GRAPHQL_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        variables: variables
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                return {
+                    errors: [{ message: `Network error: ${error.message}` }]
+                };
+            }
+        }
+        
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${isError ? 'error' : 'success'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+        
+        function showLoading(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result loading';
+            element.textContent = 'Loading...';
+        }
+        
+        function clearResult(elementId) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'none';
+        }
+        
+        function updateTransactionStatus(sessionId, state, preparedTx = null) {
+            document.getElementById('sessionId').textContent = sessionId || '-';
+            document.getElementById('transactionState').textContent = state || '-';
+            document.getElementById('preparedTx').textContent = preparedTx ? preparedTx.substring(0, 100) + '...' : '-';
+            document.getElementById('transactionStatus').style.display = sessionId ? 'block' : 'none';
+        }
+        
+        function updateWalletStatus(connected, address = '') {
+            document.getElementById('walletConnected').textContent = connected ? 'Yes' : 'No';
+            document.getElementById('walletAddress').textContent = address || '-';
+            document.getElementById('walletStatus').style.display = connected ? 'block' : 'none';
+            
+            const signBtn = document.getElementById('signBtn');
+            if (connected && preparedTransaction) {
+                signBtn.disabled = false;
+            } else {
+                signBtn.disabled = true;
+            }
+        }
+        
+        function updateButtons(step) {
+            document.getElementById('confirmBtn').disabled = true;
+            document.getElementById('completeBtn').disabled = true;
+            document.getElementById('signBtn').disabled = true;
+            
+            switch(step) {
+                case 'initiated':
+                    document.getElementById('confirmBtn').disabled = false;
+                    break;
+                case 'confirmed':
+                    document.getElementById('signBtn').disabled = false;
+                    break;
+                case 'signed':
+                    document.getElementById('completeBtn').disabled = false;
+                    break;
+            }
+        }
+        
+        // FIXED: Comprehensive debug function
+        function checkPhantomStatus() {
+            const phantomProvider = getPhantomProvider();
+            
+            const status = {
+                protocol: window.location.protocol,
+                windowPhantom: !!window.phantom,
+                windowPhantomSolana: !!window.phantom?.solana,
+                windowSolana: !!window.solana,
+                phantomProviderFound: !!phantomProvider,
+                isPhantom: phantomProvider?.isPhantom,
+                isConnected: phantomProvider?.isConnected,
+                publicKey: phantomProvider?.publicKey?.toString(),
+                phantomWalletVar: phantomWallet?.toString(),
+                userAgent: navigator.userAgent.substring(0, 100),
+                extensionCheck: {
+                    phantom: !!window.phantom,
+                    solflare: !!window.solflare,
+                    sollet: !!window.sollet
+                }
+            };
+            
+            console.log('=== PHANTOM DEBUG STATUS ===');
+            console.log(status);
+            console.log('============================');
+            
+            showResult('phantomResult', {
+                debug: true,
+                status: status,
+                message: 'Detailed debug info logged to console',
+                troubleshooting: [
+                    status.protocol !== 'https:' ? '❌ Must use HTTPS (localhost is OK)' : '✅ Protocol OK',
+                    !status.windowPhantom ? '❌ window.phantom not found - Install Phantom' : '✅ window.phantom exists',
+                    !status.phantomProviderFound ? '❌ Phantom provider not accessible' : '✅ Phantom provider found',
+                    !status.isPhantom ? '❌ Provider not identified as Phantom' : '✅ Phantom identified'
+                ]
+            });
+        }
+        
+        // FIXED: Proper connection using official Phantom API
+        async function connectPhantom() {
+            try {
+                showLoading('phantomResult');
+                console.log('=== STARTING PHANTOM CONNECTION ===');
+                
+                // Step 1: Detect Phantom
+                const detected = await detectPhantom();
+                if (!detected) {
+                    throw new Error('Phantom wallet not detected!\n\nTroubleshooting:\n1. Install Phantom extension from https://phantom.app\n2. Refresh this page\n3. Make sure Phantom is unlocked\n4. Try in incognito mode');
+                }
+                
+                // Step 2: Get provider
+                const provider = getPhantomProvider();
+                if (!provider) {
+                    throw new Error('Phantom provider not accessible');
+                }
+                
+                console.log('Phantom provider:', provider);
+                
+                // Step 3: Check if already connected
+                if (provider.isConnected && provider.publicKey) {
+                    phantomWallet = provider.publicKey;
+                    updateWalletStatus(true, phantomWallet.toString());
+                    showResult('phantomResult', {
+                        success: true,
+                        message: 'Phantom wallet already connected!',
+                        address: phantomWallet.toString(),
+                        network: 'Solana'
+                    });
+                    return;
+                }
+                
+                // Step 4: Connect using official API
+                console.log('Requesting connection...');
+                const response = await provider.connect();
+                
+                if (!response || !response.publicKey) {
+                    throw new Error('Connection failed - no public key received');
+                }
+                
+                phantomWallet = response.publicKey;
+                console.log('✅ Connected successfully:', phantomWallet.toString());
+                
+                updateWalletStatus(true, phantomWallet.toString());
+                showResult('phantomResult', {
+                    success: true,
+                    message: 'Phantom wallet connected successfully! 🎉',
+                    address: phantomWallet.toString(),
+                    network: 'Solana',
+                    connectionMethod: 'Official Phantom API'
+                });
+                
+            } catch (error) {
+                console.error('❌ Phantom connection error:', error);
+                
+                let errorMessage = error.message;
+                if (error.code === 4001) {
+                    errorMessage = 'Connection rejected by user. Please try again and approve the connection.';
+                } else if (error.code === -32002) {
+                    errorMessage = 'Connection request pending. Please check Phantom wallet popup.';
+                }
+                
+                showResult('phantomResult', { 
+                    error: errorMessage,
+                    troubleshooting: [
+                        '1. Make sure Phantom extension is installed and enabled',
+                        '2. Unlock your Phantom wallet',
+                        '3. Refresh the page and try again',
+                        '4. Check browser console for detailed errors',
+                        '5. Try in incognito mode to rule out extension conflicts'
+                    ],
+                    debug: {
+                        originalError: error.message,
+                        errorCode: error.code,
+                        phantomAvailable: !!getPhantomProvider()
+                    }
+                }, true);
+                updateWalletStatus(false);
+            }
+        }
+        
+        async function signTransactionWithPhantom() {
+            try {
+                showLoading('phantomResult');
+                
+                if (!phantomProvider) {
+                    throw new Error('Please connect Phantom wallet first');
+                }
+                
+                if (!preparedTransaction) {
+                    throw new Error('No prepared transaction. Please confirm transform first.');
+                }
+                
+                // Convert and sign transaction
+                let transactionBytes = Uint8Array.from(atob(preparedTransaction), c => c.charCodeAt(0));
+                const { Transaction } = window.solanaWeb3;
+                let transaction = Transaction.from(transactionBytes);
+                
+                const signedTransaction = await phantomProvider.signTransaction(transaction);
+                const signedBytes = signedTransaction.serialize();
+                const signedBase64 = btoa(String.fromCharCode(...signedBytes));
+                
+                preparedTransaction = signedBase64;
+                
+                updateTransactionStatus(currentSession.sessionId, 'SignedByUser', 'Transaction signed and ready');
+                updateButtons('signed');
+                
+                showResult('phantomResult', {
+                    success: true,
+                    message: 'Transaction signed successfully! 🎉',
+                    signedTransaction: signedBase64.substring(0, 100) + '...',
+                    nextStep: '⚠️ Click "Complete Transform" button ONCE to submit to blockchain',
+                    warning: 'Do not click multiple times - transaction will be submitted only once'
+                });
+                
+            } catch (error) {
+                showResult('phantomResult', { error: 'Failed to sign: ' + error.message }, true);
+            }
+        }
+        
+        // Keep all other functions unchanged...
+        async function validateWallet() {
+            const walletAddress = document.getElementById('walletAddress').value.trim();
+            
+            if (!walletAddress) {
+                showResult('walletResult', { error: 'Please enter a wallet address' }, true);
+                return;
+            }
+            
+            showLoading('walletResult');
+            
+            const query = `
+                mutation ValidateWallet($input: ValidateWalletInput!) {
+                    validateWallet(input: $input) {
+                        isValid
+                        message
+                        formattedPubkey
+                        validationDetails {
+                            lengthValid
+                            charsetValid
+                            base58Valid
+                            notSystemAccount
+                        }
+                        onChainDetails {
+                            existsOnChain
+                            balanceLamports
+                            balanceSol
+                            isExecutable
+                            owner
+                            rpcEndpoint
+                        }
+                    }
+                }
+            `;
+            
+            const variables = {
+                input: {
+                    pubkey: walletAddress
+                }
+            };
+            
+            const result = await makeGraphQLRequest(query, variables);
+            
+            if (result.errors) {
+                showResult('walletResult', result.errors, true);
+            } else {
+                showResult('walletResult', result.data.validateWallet);
+            }
+        }
+        
+        async function checkTokenAccount() {
+            const walletAddress = document.getElementById('tokenWalletAddress').value.trim();
+            
+            if (!walletAddress) {
+                showResult('tokenResult', { error: 'Please enter a wallet address' }, true);
+                return;
+            }
+            
+            showLoading('tokenResult');
+            
+            const query = `
+                mutation CheckTokenAccount($input: CheckTokenAccountInput!) {
+                    checkTokenAccount(input: $input) {
+                        walletValid
+                        tokenAccountExists
+                        message
+                        walletPubkey
+                        tokenAccountAddress
+                        mintAddress
+                        accountDetails {
+                            balance
+                            balanceUi
+                            owner
+                            mint
+                            isInitialized
+                            isFrozen
+                            rpcEndpoint
+                        }
+                    }
+                }
+            `;
+            
+            const variables = {
+                input: {
+                    walletPubkey: walletAddress
+                }
+            };
+            
+            const result = await makeGraphQLRequest(query, variables);
+            
+            if (result.errors) {
+                showResult('tokenResult', result.errors, true);
+            } else {
+                showResult('tokenResult', result.data.checkTokenAccount);
+            }
+        }
+        
+        async function initiateTransform() {
+            const walletAddress = document.getElementById('transformWalletAddress').value.trim();
+            const amount = parseFloat(document.getElementById('transformAmount').value);
+            
+            if (!walletAddress) {
+                showResult('transformResult', { error: 'Please enter a wallet address' }, true);
+                return;
+            }
+            
+            if (!amount || amount <= 0) {
+                showResult('transformResult', { error: 'Please enter a valid amount' }, true);
+                return;
+            }
+            
+            showLoading('transformResult');
+            
+            const query = `
+                mutation InitiateTransform($input: InitiateTransformInput!) {
+                    initiateTransform(input: $input) {
+                        success
+                        message
+                        session {
+                            sessionId
+                            state
+                            walletPubkey
+                            tokenAccountAddress
+                            amount
+                            amountRaw
+                            estimatedGasFee
+                            companyWallet
+                            createdAt
+                        }
+                        nextAction
+                        redirectUrl
+                    }
+                }
+            `;
+            
+            const variables = {
+                input: {
+                    walletPubkey: walletAddress,
+                    amount: amount
+                }
+            };
+            
+            const result = await makeGraphQLRequest(query, variables);
+            
+            if (result.errors) {
+                showResult('transformResult', result.errors, true);
+            } else {
+                const data = result.data.initiateTransform;
+                showResult('transformResult', data);
+                
+                if (data.success && data.session) {
+                    currentSession = data.session;
+                    updateTransactionStatus(data.session.sessionId, data.session.state);
+                    updateButtons('initiated');
+                }
+            }
+        }
+        
+        async function confirmTransform() {
+            if (!currentSession) {
+                showResult('transformResult', { error: 'Please initiate transform first' }, true);
+                return;
+            }
+            
+            showLoading('transformResult');
+            
+            const query = `
+                mutation ConfirmTransform($input: ConfirmTransformInput!) {
+                    confirmTransform(input: $input) {
+                        success
+                        message
+                        nextAction
+                        redirectUrl
+                    }
+                }
+            `;
+            
+            const variables = {
+                input: {
+                    sessionId: currentSession.sessionId,
+                    confirmed: true
+                }
+            };
+            
+            const result = await makeGraphQLRequest(query, variables);
+            
+            if (result.errors) {
+                showResult('transformResult', result.errors, true);
+            } else {
+                const data = result.data.confirmTransform;
+                showResult('transformResult', data);
+                
+                if (data.success && data.redirectUrl) {
+                    preparedTransaction = data.redirectUrl;
+                    updateTransactionStatus(currentSession.sessionId, 'WaitingUserSignature', preparedTransaction);
+                    updateButtons('confirmed');
+                    
+                    showResult('transformResult', {
+                        ...data,
+                        transactionPrepared: true,
+                        instructions: 'Transaction prepared! Now sign with Phantom.'
+                    });
+                }
+            }
+        }
+        
+        async function completeTransform() {
+            if (!currentSession) {
+                showResult('transformResult', { error: 'Please initiate transform first' }, true);
+                return;
+            }
+            
+            if (!preparedTransaction) {
+                showResult('transformResult', { error: 'Please sign transaction with Phantom first' }, true);
+                return;
+            }
+            
+            // Disable button immediately to prevent double-submission
+            const completeBtn = document.getElementById('completeBtn');
+            completeBtn.disabled = true;
+            completeBtn.textContent = 'Submitting...';
+            
+            showLoading('transformResult');
+            
+            const query = `
+                mutation CompleteTransform($input: CompleteTransformInput!) {
+                    completeTransform(input: $input) {
+                        success
+                        message
+                        redirectUrl
+                    }
+                }
+            `;
+            
+            const variables = {
+                input: {
+                    sessionId: currentSession.sessionId,
+                    signedTransaction: preparedTransaction
+                }
+            };
+            
+            const result = await makeGraphQLRequest(query, variables);
+            
+            if (result.errors) {
+                // Check if error is "already processed" (which means success)
+                const errorMsg = JSON.stringify(result.errors);
+                if (errorMsg.includes('already been processed')) {
+                    showResult('transformResult', {
+                        success: true,
+                        message: '✅ Transaction already completed successfully!',
+                        note: 'This transaction was already submitted to the blockchain.'
+                    });
+                    updateTransactionStatus(currentSession.sessionId, 'Completed', 'Already processed');
+                    currentSession = null;
+                    preparedTransaction = null;
+                    updateButtons('completed');
+                } else {
+                    showResult('transformResult', result.errors, true);
+                    // Re-enable button if different error
+                    completeBtn.disabled = false;
+                    completeBtn.textContent = 'Step 3: Complete Transform';
+                }
+            } else {
+                const data = result.data.completeTransform;
+                showResult('transformResult', data);
+                
+                if (data.success) {
+                    updateTransactionStatus(currentSession.sessionId, 'Completed', 'Transform completed!');
+                    currentSession = null;
+                    preparedTransaction = null;
+                    updateButtons('completed');
+                    
+                    if (data.redirectUrl) {
+                        setTimeout(() => window.open(data.redirectUrl, '_blank'), 2000);
+                    }
+                }
+            }
+        }
+        
+        // Helper functions
+        function fillSampleWallet() {
+            document.getElementById('walletAddress').value = SAMPLE_WALLET;
+            document.getElementById('tokenWalletAddress').value = SAMPLE_WALLET;
+            document.getElementById('transformWalletAddress').value = SAMPLE_WALLET;
+        }
+        
+        function copyWalletToAll() {
+            const walletAddress = document.getElementById('walletAddress').value;
+            if (walletAddress) {
+                document.getElementById('tokenWalletAddress').value = walletAddress;
+                document.getElementById('transformWalletAddress').value = walletAddress;
+            }
+        }
+        
+        function clearAllResults() {
+            clearResult('walletResult');
+            clearResult('tokenResult');
+            clearResult('transformResult');
+            clearResult('phantomResult');
+            
+            currentSession = null;
+            preparedTransaction = null;
+            updateTransactionStatus();
+            updateWalletStatus(false);
+            updateButtons('reset');
+        }
+        
+
+        window.addEventListener('load', async () => {
+            console.log('=== PAGE LOADED - INITIALIZING PHANTOM ===');
+            
+            // Wait for extensions to load
+            setTimeout(async () => {
+                console.log('Checking for Phantom...');
+                const detected = await detectPhantom(20, 250);
+                
+                if (detected && phantomProvider) {
+                    console.log('✅ Phantom available!');
+                    
+                    // Check if already connected
+                    if (phantomProvider.isConnected && phantomProvider.publicKey) {
+                        console.log('Already connected to Phantom');
+                        phantomWallet = phantomProvider.publicKey;
+                        updateWalletStatus(true, phantomWallet.toString());
+                    }
+                } else {
+                    console.log('❌ Phantom not detected');
+                }
+            }, 3000); // Wait 3 seconds for extensions
+        });
+        
+        // Update endpoint display
+        document.getElementById('endpoint').textContent = GRAPHQL_ENDPOINT;
+    </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+
+cluster = "devnet"
+commitment_level = "confirmed"
+transaction_timeout = 30
+max_retries = 3
+
+[server]
+host = "127.0.0.1"
+port = 4000
+workers = 2
+
+
+
+
+[solana]
+rpc_url="https://api.devnet.solana.com"
+cluster = "devnet"
+commitment = "confirmed"
+timeout = 60
+max_retries = 3
+peer_mint_address = "7jJXJo1tt6ZbT7kmjwne8Sbi6imxkY55A7Jyonj2fZD3"
+company_token_account = "9izzes1LVRcgKqTW3dxM6AsgpdPq7nGUJBUbYP7RY34u"
+admin_keypair_path = "./keys/admin1.json"
+user_keypair_path = "./keys/user1.json"
+
+
+[security]
+rate_limit_rpm = 1000
+# api_key loaded from .env.dev
+
+[cashout]
+min_amount = 1000
+max_amount = 1_000_000
+
+[logging]
+level = "debug"
+file_path = "./logs"
+format = "json"
+enable_tracing = true
+rotation = "daily"
+
+[database]
+host = "localhost"
+port = 5432
+username = "peer_dev"
+db_name = "peer_development"
+max_connections = 10
+min_connections = 2
+
+
+
+
+
+
