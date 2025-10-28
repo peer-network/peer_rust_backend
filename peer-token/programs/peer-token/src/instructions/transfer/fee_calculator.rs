@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 use crate::{
     constants::*,
-    errors::PeerTokenError
+    errors::PeerTokenError,
+    state::FeeParams,
 };
 
-///  Fee breakdown for a transfer
 #[derive(Debug, Clone)]
 pub struct TransferFeeBreakdown {
     pub original_amount: u64,
@@ -17,23 +17,19 @@ pub struct TransferFeeBreakdown {
 }
 
 impl TransferFeeBreakdown {
-    /// Calculate all fees from transfer amount
+
     pub fn calculate(amount: u64, fee_config: &FeeParams) -> Result<Self> {
 
-        //  Step 1: Calculate burn fee 
         let burn_amount = Self::calculate_percentage(amount, fee_config.burn_percent)?;
         let after_burn = amount.checked_sub(burn_amount)
             .ok_or(PeerTokenError::ArithmeticUnderflow)?;
 
-        // Step 2: Calculate other fees ( amount after burn)
         let treasury_amount = Self::calculate_percentage(after_burn, fee_config.company_percent)?;
         let lp_amount = Self::calculate_percentage(after_burn, fee_config.lp_percent)?;
         let referral_amount = Self::calculate_percentage(after_burn, fee_config.referral_percent)?;
         
-        // Step 3: Gas fee is fixed amount (in tokens, not SOL)
         let gas_fee_amount = std::cmp::min(fee_config.gas_fee_amount, after_burn);
         
-        // Step 4: Calculate remaining for recipient
         let total_fees = treasury_amount
             .checked_add(lp_amount)
             .and_then(|sum| sum.checked_add(referral_amount))
@@ -53,7 +49,6 @@ impl TransferFeeBreakdown {
             recipient_amount,
         };
 
-        // Verify calculation integrity
         breakdown.verify_integrity()?;
         
         Ok(breakdown)
@@ -74,7 +69,6 @@ impl TransferFeeBreakdown {
         Ok(result as u64)
     }
 
-    /// Verify that all calculations are correct
     fn verify_integrity(&self) -> Result<()> {
         // Verify burn + remaining fees + recipient = original
         let calculated_total = self.burn_amount

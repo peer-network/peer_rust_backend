@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{
-    TokenInterface, TokenAccount, Mint, Transfer, Burn
+    TokenInterface, TokenAccount, Mint, TransferChecked, Burn, transfer_checked, burn
 };
 use anchor_spl::associated_token::get_associated_token_address;
+
 
 use crate::{
     state::*,
@@ -11,7 +12,7 @@ use crate::{
     instructions::transfer::fee_calculator::TransferFeeBreakdown,
 };
 
-/// Transfer with fee distribution
+
 pub fn transfer_with_fees_handler(
     ctx: Context<TransferWithFees>,
     amount: u64,
@@ -74,9 +75,8 @@ pub fn transfer_with_fees_handler(
     msg!("   Gas: {} tokens", fee_breakdown.gas_fee_amount / 1_000_000_000);
     msg!("   Recipient: {} tokens", fee_breakdown.recipient_amount / 1_000_000_000);
 
-    // ═══════════════════════════════════════════════════════════
+
     // EXECUTE ATOMIC OPERATIONS (All CPI calls in single transaction)
-    // ═══════════════════════════════════════════════════════════
     
     // OPERATION 1: Burn tokens directly from sender 
     if fee_breakdown.burn_amount > 0 {
@@ -91,16 +91,17 @@ pub fn transfer_with_fees_handler(
             burn_cpi_accounts,
         );
         
-        token_interface::burn(burn_cpi_context, fee_breakdown.burn_amount)?;
+        burn(burn_cpi_context, fee_breakdown.burn_amount)?;
         msg!(" Burned {} tokens directly", fee_breakdown.burn_amount / 1_000_000_000);
     }
     
     //  OPERATION 2: Transfer to treasury (CPI call)
     if fee_breakdown.treasury_amount > 0 {
-        let transfer_cpi_accounts = Transfer {
+        let transfer_cpi_accounts = TransferChecked {
             from: ctx.accounts.sender_ata.to_account_info(),
             to: ctx.accounts.treasury_ata.to_account_info(),
             authority: ctx.accounts.sender.to_account_info(),
+            mint: ctx.accounts.peer_mint.to_account_info(),
         };
         
         let transfer_cpi_context = CpiContext::new(
@@ -108,16 +109,17 @@ pub fn transfer_with_fees_handler(
             transfer_cpi_accounts,
         );
         
-        token_interface::transfer(transfer_cpi_context, fee_breakdown.treasury_amount)?;
+        transfer_checked(transfer_cpi_context, fee_breakdown.treasury_amount, ctx.accounts.peer_mint.decimals)?;
         msg!(" Transferred {} to treasury", fee_breakdown.treasury_amount / 1_000_000_000);
     }
     
     //  OPERATION 3: Transfer to LP (CPI call)
     if fee_breakdown.lp_amount > 0 {
-        let transfer_cpi_accounts = Transfer {
+        let transfer_cpi_accounts = TransferChecked {
             from: ctx.accounts.sender_ata.to_account_info(),
             to: ctx.accounts.lp_ata.to_account_info(),
             authority: ctx.accounts.sender.to_account_info(),
+            mint: ctx.accounts.peer_mint.to_account_info(),
         };
         
         let transfer_cpi_context = CpiContext::new(
@@ -125,16 +127,17 @@ pub fn transfer_with_fees_handler(
             transfer_cpi_accounts,
         );
         
-        token_interface::transfer(transfer_cpi_context, fee_breakdown.lp_amount)?;
+        transfer_checked(transfer_cpi_context, fee_breakdown.lp_amount, ctx.accounts.peer_mint.decimals)?;
         msg!(" Transferred {} to LP", fee_breakdown.lp_amount / 1_000_000_000);
     }
     
     // OPERATION 4: Transfer to referral (CPI call)
     if fee_breakdown.referral_amount > 0 {
-        let transfer_cpi_accounts = Transfer {
+        let transfer_cpi_accounts = TransferChecked {
             from: ctx.accounts.sender_ata.to_account_info(),
             to: ctx.accounts.referral_ata.to_account_info(),
             authority: ctx.accounts.sender.to_account_info(),
+            mint: ctx.accounts.peer_mint.to_account_info(),
         };
         
         let transfer_cpi_context = CpiContext::new(
@@ -142,16 +145,17 @@ pub fn transfer_with_fees_handler(
             transfer_cpi_accounts,
         );
         
-        token_interface::transfer(transfer_cpi_context, fee_breakdown.referral_amount)?;
+        transfer_checked(transfer_cpi_context, fee_breakdown.referral_amount, ctx.accounts.peer_mint.decimals)?;
         msg!(" Transferred {} to referral", fee_breakdown.referral_amount / 1_000_000_000);
     }
     
     // OPERATION 5: Transfer gas fee to fee wallet (CPI call)
     if fee_breakdown.gas_fee_amount > 0 {
-        let transfer_cpi_accounts = Transfer {
+        let transfer_cpi_accounts = TransferChecked {
             from: ctx.accounts.sender_ata.to_account_info(),
             to: ctx.accounts.fee_ata.to_account_info(),
             authority: ctx.accounts.sender.to_account_info(),
+            mint: ctx.accounts.peer_mint.to_account_info(),
         };
         
         let transfer_cpi_context = CpiContext::new(
@@ -159,16 +163,17 @@ pub fn transfer_with_fees_handler(
             transfer_cpi_accounts,
         );
         
-        token_interface::transfer(transfer_cpi_context, fee_breakdown.gas_fee_amount)?;
+        transfer_checked(transfer_cpi_context, fee_breakdown.gas_fee_amount, ctx.accounts.peer_mint.decimals)?;
         msg!(" Transferred {} to gas fee wallet", fee_breakdown.gas_fee_amount / 1_000_000_000);
     }
     
     //  OPERATION 6: Final transfer to recipient (CPI call)
     if fee_breakdown.recipient_amount > 0 {
-        let transfer_cpi_accounts = Transfer {
+        let transfer_cpi_accounts = TransferChecked {
             from: ctx.accounts.sender_ata.to_account_info(),
             to: ctx.accounts.recipient_ata.to_account_info(),
             authority: ctx.accounts.sender.to_account_info(),
+            mint: ctx.accounts.peer_mint.to_account_info(),
         };
         
         let transfer_cpi_context = CpiContext::new(
@@ -176,13 +181,11 @@ pub fn transfer_with_fees_handler(
             transfer_cpi_accounts,
         );
         
-        token_interface::transfer(transfer_cpi_context, fee_breakdown.recipient_amount)?;
+        transfer_checked(transfer_cpi_context, fee_breakdown.recipient_amount, ctx.accounts.peer_mint.decimals)?;
         msg!(" Transferred {} to recipient", fee_breakdown.recipient_amount / 1_000_000_000);
     }
     
-    // ═══════════════════════════════════════════════════════════
     // EMIT  EVENT FOR MONITORING
-    // ═══════════════════════════════════════════════════════════
     
     emit!(TransferWithFeesEvent {
         sender: ctx.accounts.sender.key(),
@@ -268,11 +271,11 @@ pub struct TransferWithFees<'info> {
     )]
     pub lp_ata: InterfaceAccount<'info, TokenAccount>,
     
-    /// Referral ATA (referral rewards)
+    /// Referral ATA (referral rewards) - using fee_wallet for now
     #[account(
         mut,
         constraint = referral_ata.key() == 
-            get_associated_token_address(&program_config.wallets.referral_wallet, &program_config.token.peer_mint)  
+            get_associated_token_address(&program_config.wallets.fee_wallet, &program_config.token.peer_mint)  
             @ PeerTokenError::InvalidTokenAccount,
         constraint = referral_ata.mint == program_config.token.peer_mint @ PeerTokenError::InvalidMint
     )]
@@ -292,7 +295,7 @@ pub struct TransferWithFees<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-/// Comprehensive transfer event for analytics
+/// Transfer event for analytics
 #[event]
 pub struct TransferWithFeesEvent {
     pub sender: Pubkey,

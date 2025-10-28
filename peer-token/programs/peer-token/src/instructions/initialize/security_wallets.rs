@@ -41,14 +41,14 @@ pub struct InitializeSecurityWallets<'info> {
     
     /// CHECK: LP wallet authority (DEX liquidity management - SECURE)
     /// REQUIREMENTS:
-    /// - Hardware wallet (Mostly), Multisig wallet preferred
+    /// - Hardware wallet or  Multisig wallet 
     /// - Controls  liquidity
     pub lp_wallet: UncheckedAccount<'info>,
     
 
 
     
-    /// MINTING ATA - ULTRA SECURE TOKEN CUSTODY
+    /// MINTING ATA -  SECURE TOKEN CUSTODY
     /// This wallet controls token supply
     /// Must use hardware wallet or multisig for security
     #[account(
@@ -62,9 +62,8 @@ pub struct InitializeSecurityWallets<'info> {
     
     /// CHECK: MINTING WALLET AUTHORITY -  SECURE
     ///  REQUIREMENTS:
-    /// - Hardware wallet (Mostly), Multisig wallet preferred
+    /// - Hardware wallet or  Multisig wallet preferred
     pub minting_wallet: UncheckedAccount<'info>,
-    
     
     
     pub token_program: Interface<'info, TokenInterface>,

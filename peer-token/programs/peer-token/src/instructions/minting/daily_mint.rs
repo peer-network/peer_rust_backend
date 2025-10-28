@@ -1,4 +1,3 @@
-//! Daily minting to the minting wallet with strict limits and security
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface, MintTo};
 use anchor_spl::token_interface;
@@ -47,19 +46,16 @@ pub fn daily_mint_handler(ctx: Context<DailyMint>) -> Result<()> {
         PeerTokenError::InvalidOwner
     );
 
-    // ═══════════════════════════════════════════════════════════
-    // 📅 DAILY MINT LIMIT VALIDATION
-    // ═══════════════════════════════════════════════════════════
 
     // Check if it's a new day
     let time_since_reset = current_time.saturating_sub(config.token.last_mint_reset);
-    let is_new_day = time_since_reset >= 86400; // 24 hours in seconds
+    let is_new_day = time_since_reset >= 86400; 
 
     if is_new_day {
         // Reset daily counter for new day
         config.token.daily_mint_amount = 0;
         config.token.last_mint_reset = current_time;
-        msg!("🔄 Daily mint limit reset for new day");
+        msg!(" Daily mint limit reset for new day");
     }
 
     //  Check daily mint limit
@@ -71,7 +67,7 @@ pub fn daily_mint_handler(ctx: Context<DailyMint>) -> Result<()> {
     );
 
     
-    //  EXECUTE MINT TO 
+    //  EXECUTE MINT TO Instruction
     
 
     // Mintauth PDA signer
@@ -95,7 +91,7 @@ pub fn daily_mint_handler(ctx: Context<DailyMint>) -> Result<()> {
         signer_seeds,
     );
 
-    // Execute mint
+    // Execute mint_to
     token_interface::mint_to(mint_cpi_context, mint_amount)?;
 
     // Update state tracking
