@@ -162,6 +162,10 @@ pub enum PeerTokenError {
     #[msg("Invalid authority - provided authority account is not valid")]
     InvalidAuthority,
 
+    /// 6405 - Invalid recipient account
+    #[msg("Invalid recipient - provided recipient account is not valid")]
+    InvalidRecipient,
+
     // ═══════════════════════════════════════════════════════════
     // MATHEMATICAL AND CALCULATION ERRORS (6500-6599)
     // ═══════════════════════════════════════════════════════════

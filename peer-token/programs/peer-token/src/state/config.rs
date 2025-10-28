@@ -99,7 +99,6 @@ impl ProgramConfig {
 
 // #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 // pub struct Airdrop_Schedule {
-//     //Airdrop Related 
 //     pub total_gems: u64,
 //     // pub recipients: Vec<AirdropRecipient>,
 //     pub total_distributed: u64,

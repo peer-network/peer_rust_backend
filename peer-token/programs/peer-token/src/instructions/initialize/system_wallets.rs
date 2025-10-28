@@ -43,7 +43,7 @@ pub struct InitializeSystemWallets<'info> {
     pub treasury_wallet: UncheckedAccount<'info>,
     
 
-    // FEE WALLET - Sol Fee Payer ( Sol Fund)
+    // FEE WALLET - Sol Fee Payer ( Sol Fund )
     /// Fee  ATA for gas and Transfer fees Payer
     #[account(
         init,

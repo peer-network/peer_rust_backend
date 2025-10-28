@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 use anchor_lang::prelude::*;
 
 pub mod state;
@@ -29,6 +31,7 @@ pub mod peer_token {
         instructions::initialize::security_wallets::security_handler(ctx)
     }
 
+    /// Daily mint to minting wallet
     pub fn daily_mint_exec(ctx: Context<DailyMint>) -> Result<()> {
         instructions::minting::daily_mint::daily_mint_handler(ctx)
     }
