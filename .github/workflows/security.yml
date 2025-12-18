@@ -1,5 +1,9 @@
 name: Security Scan
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   pull_request:
     branches:
@@ -13,15 +17,72 @@ on:
       - main
 
 jobs:
+  auto_label:
+    name: Auto Label PR
+    if: github.event_name == 'pull_request'
+    uses: peer-network/.github/.github/workflows/auto-label.yml@main
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      mode: soft
+      label_config: |
+        {
+          ".github/workflows/.*": "ci",
+          ".githooks/.*": "ci",
+
+          ".security/.*": "security",
+
+          "README.*": "documentation",
+          "LICENSE": "documentation",
+          "peer-in-rust/docs/.*": "documentation",
+
+          "client/.*": "client-sdk",
+          "client/.*\\.ts$": "client-sdk",
+          "client/.*\\.json$": "client-sdk",
+
+          "peer-in-rust/.*": "rust-backend",
+          "peer-in-rust/crates/.*": "rust-backend",
+          "peer-in-rust/config/.*": "config",
+          "peer-in-rust/data/.*": "data",
+          "peer-in-rust/scripts/.*": "scripts",
+
+          "peer-in-rust/frontend/.*": "frontend",
+
+          "peer-token/.*": "solana",
+          "peer-token/programs/.*": "solana",
+          "peer-token/migrations/.*": "solana",
+          "peer-token/scripts/.*": "solana",
+          "peer-token/tests/.*": "tests",
+
+          ".*\\.rs$": "rust",
+          ".*\\.toml$": "build",
+          "Cargo.toml": "build",
+          "Cargo.lock": "build",
+
+          ".*\\.ts$": "typescript",
+          "package.json": "build",
+          "yarn.lock": "build",
+          "tsconfig.json": "build"
+        }
+
+  auto_update_branch:
+    name: Auto-Update PR Branch
+    uses: peer-network/.github/.github/workflows/auto-update-pr.yml@main
+    with:
+      pr_base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || '' }}
+      pr_head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    secrets: inherit
+
   gitleaks:
     name: Run Gitleaks Scan
+    needs: [auto_update_branch]
     uses: peer-network/peer_global_security/.github/workflows/gitleaks.yml@main
     with:
       config: .security/gitleaks.toml
 
   trivy_scan:
     name: Run Trivy Security Scan
-    needs: [gitleaks]
+    needs: [auto_update_branch, gitleaks]
     uses: peer-network/.github/.github/workflows/trivy-scan.yml@main
     with:
       scan_target: .
@@ -34,6 +95,11 @@ jobs:
     steps:
       - id: map
         run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "discord_mention=<@837718845330292766>" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           case "${{ github.event.pull_request.user.login }}" in
             WisdomNwaiwu)
               echo "discord_mention=<@1362087975906967736>" >> $GITHUB_OUTPUT
@@ -51,8 +117,8 @@ jobs:
   send_discord_notification:
     name: Unified Discord Notification
     runs-on: ubuntu-latest
-    needs: [gitleaks, trivy_scan, map_pr_to_discord]
-    if: always()
+    needs: [auto_update_branch, gitleaks, trivy_scan, map_pr_to_discord]
+    if: github.event_name == 'pull_request'
     steps:
       - name: Decide Notification Type
         id: decide
@@ -109,3 +175,19 @@ jobs:
                -X POST \
                -d "{\"content\": \"$MESSAGE\"}" \
                "$DISCORD_WEBHOOK_URL"
+
+  final_check:
+    name: Final Check - Fail if Any Critical Job Failed
+    runs-on: ubuntu-latest
+    needs: [gitleaks, trivy_scan]
+    if: always()
+    steps:
+      - run: |
+          if [ "${{ needs.gitleaks.result }}" == "failure" ]; then
+            echo "Failing: Gitleaks detected secrets."
+            exit 1
+          fi
+          if [ "${{ needs.trivy_scan.outputs.has_findings }}" == "true" ]; then
+            echo "Warning: Trivy found vulnerabilities (soft fail)."
+          fi
+          echo "All critical checks passed."
